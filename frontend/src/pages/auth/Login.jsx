@@ -7,8 +7,36 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Zap } from "lucide-react";
 import { toast } from "sonner";
+import { GoogleLogin } from "@react-oauth/google";
 
 export function GoogleButton({ testid }) {
+  const { setUser } = useAuth();
+  const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+
+  // Fluxo OAuth próprio (hospedagem externa) — ativa quando REACT_APP_GOOGLE_CLIENT_ID existe
+  if (googleClientId) {
+    return (
+      <div data-testid={testid}>
+        <GoogleLogin
+          theme="filled_black"
+          width="100%"
+          text="continue_with"
+          onSuccess={async (resp) => {
+            try {
+              const { data } = await api.post("/auth/google/session", { credential: resp.credential });
+              setUser(data);
+              window.location.href = "/dashboard";
+            } catch {
+              toast.error("Falha no login com Google");
+            }
+          }}
+          onError={() => toast.error("Falha no login com Google")}
+        />
+      </div>
+    );
+  }
+
+  // Fluxo gerenciado pelo Emergent (preview)
   const handleGoogle = () => {
     // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
     const redirectUrl = window.location.origin + "/dashboard";

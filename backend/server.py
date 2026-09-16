@@ -317,6 +317,43 @@ async def login(req: LoginRequest, request: Request, response: Response):
 @api_router.post("/auth/google/session")
 async def google_session(request: Request, response: Response):
     body = await request.json()
+    google_client_id = os.environ.get("GOOGLE_CLIENT_ID")
+    credential = body.get("credential")
+
+    # --- Fluxo OAuth próprio (hospedagem externa): verifica o id_token do Google ---
+    # REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+    if google_client_id and credential:
+        from google.oauth2 import id_token as google_id_token
+        from google.auth.transport import requests as google_requests
+        try:
+            gdata = google_id_token.verify_oauth2_token(
+                credential, google_requests.Request(), google_client_id
+            )
+        except ValueError:
+            raise HTTPException(status_code=401, detail="Token Google inválido")
+        email = gdata["email"].lower()
+        user = await db.users.find_one({"email": email}, {"_id": 0})
+        if not user:
+            user_id = f"user_{uuid.uuid4().hex[:12]}"
+            user = {
+                "user_id": user_id, "email": email, "name": gdata.get("name", email.split("@")[0]),
+                "picture": gdata.get("picture"), "role": "member", "plan": "trial",
+                "token_version": 0, "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            await db.users.insert_one(user)
+            await db.app_settings.insert_one({
+                "user_id": user_id, "default_model": "gpt-5.4-mini",
+                "default_tone": "profissional", "agency_name": "", "meta_connected": False,
+            })
+            await log_activity(user_id, "auth", f"Nova conta via Google: {email}")
+        else:
+            await db.users.update_one({"email": email}, {"$set": {"name": gdata.get("name", user["name"]), "picture": gdata.get("picture")}})
+            user["name"] = gdata.get("name", user["name"])
+            user["picture"] = gdata.get("picture")
+        set_jwt_cookies(response, user)
+        return public_user(user)
+
+    # --- Fluxo gerenciado pelo Emergent (preview): usa session_id ---
     session_id = body.get("session_id")
     if not session_id:
         raise HTTPException(status_code=400, detail="session_id ausente")

@@ -62,3 +62,11 @@ Multi-tenant por usuário; geração de conteúdo com IA contextualizada por mar
   - Externo (com GOOGLE_CLIENT_ID + REACT_APP_GOOGLE_CLIENT_ID): verifica id_token via google-auth; frontend usa @react-oauth/google (GoogleLogin + GoogleOAuthProvider).
   - Arquivos: backend/server.py (/api/auth/google/session), frontend/src/pages/auth/Login.jsx, frontend/src/index.js.
 - Verificado: backend sobe sem erros; tela de login do preview intacta (botão Emergent renderizando).
+
+## 2026-06 — Landing page executiva (redesign com tendências 2026)
+- Reescrita frontend/src/pages/Landing.jsx aplicando padrões de conversão SaaS B2B/IA de 2026:
+  - Hero 2 colunas com "capability surface" (mock de UI do produto: peça gerada + métricas), no lugar de foto de stock.
+  - Banda de stats defensáveis; seções editoriais Produção/Decisão com mocks (gráfico de barras); muro de integrações; copy direta sem fluff.
+  - CTA final dedicado + CTA fixo no rodapé (aparece após scroll > 560px). Nav âncora (Recursos/Integrações/Planos).
+  - Paleta Vanguarda mantida; animações framer-motion; todos com data-testid.
+- Verificado por screenshot: renderiza sem erros de console, sem overflow horizontal.

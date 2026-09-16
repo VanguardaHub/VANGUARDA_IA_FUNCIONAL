@@ -54,3 +54,11 @@ Multi-tenant por usuário; geração de conteúdo com IA contextualizada por mar
 ## 2026-06 — Paleta Vanguarda aplicada
 - Substituído tema indigo/violeta por vermelho Vanguarda (#FF2D40, primary hsl 355 100% 59%) e pretos neutros (#0B0B0D, #15151A) em index.css e todas as páginas.
 - Migração para GitHub: orientado a usar "Save to GitHub" (não é possível pelo agente).
+
+## 2026-06 — Preparação para deploy externo (Vercel/Railway/Render)
+- Criados arquivos de deploy: backend/Procfile, backend/runtime.txt, backend/.env.example, frontend/.env.example, frontend/vercel.json, render.yaml, DEPLOY.md (guia pt-BR completo: MongoDB Atlas + backend + Vercel + Google OAuth próprio).
+- Google OAuth agora CONDICIONAL por env var, sem quebrar o preview:
+  - Preview (sem GOOGLE_CLIENT_ID): usa fluxo Emergent-managed (auth.emergentagent.com).
+  - Externo (com GOOGLE_CLIENT_ID + REACT_APP_GOOGLE_CLIENT_ID): verifica id_token via google-auth; frontend usa @react-oauth/google (GoogleLogin + GoogleOAuthProvider).
+  - Arquivos: backend/server.py (/api/auth/google/session), frontend/src/pages/auth/Login.jsx, frontend/src/index.js.
+- Verificado: backend sobe sem erros; tela de login do preview intacta (botão Emergent renderizando).

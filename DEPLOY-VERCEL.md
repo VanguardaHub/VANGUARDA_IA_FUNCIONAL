@@ -164,7 +164,30 @@ pip install -r backend/requirements-dev.txt   # inclui o requirements.txt
 
 ---
 
-## 7. Validação pós-deploy
+## 7. Validação
+
+### Antes de implantar — verificador de configuração
+
+Confere as variáveis obrigatórias e testa a conexão real com o MongoDB,
+apontando a causa provável de cada falha. Não escreve no banco e não imprime
+segredo algum. Sai com código 1 se houver impedimento.
+
+```bash
+# usando backend/.env
+python3 backend/check_env.py
+
+# ou apontando direto para o Atlas, sem gravar em arquivo
+MONGO_URL="mongodb+srv://usuario:senha@cluster.xxxx.mongodb.net/" \
+DB_NAME=vanguarda_ia JWT_SECRET=... FRONTEND_URL=https://... \
+ADMIN_EMAIL=... ADMIN_PASSWORD=... ANTHROPIC_API_KEY=... \
+python3 backend/check_env.py
+```
+
+Ele distingue os três erros mais comuns do Atlas: nome de cluster que não
+resolve no DNS, usuário ou senha recusados (lembre do percent-encoding em
+senhas com caractere especial) e servidor inalcançável por bloqueio de rede.
+
+### Depois de implantar
 
 ```bash
 API=https://vanguarda-api.vercel.app

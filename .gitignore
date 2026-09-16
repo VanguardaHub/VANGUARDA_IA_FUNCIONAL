@@ -88,6 +88,11 @@ frontend/node_modules/.cache/default-development/6.pack
 .env
 .env.*
 *.env
+
+# ...mas os arquivos de EXEMPLO devem ser versionados: sao o contrato de
+# configuracao do projeto e nao contem segredo algum.
+!.env.example
+!**/.env.example
 credentials.json
 *.key
 .credentials

@@ -4,18 +4,31 @@ import uuid
 import pytest
 import requests
 
+from pathlib import Path
+
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
 if not BASE_URL:
-    # Fallback to frontend/.env
-    from pathlib import Path
-    for line in Path("/app/frontend/.env").read_text().splitlines():
-        if line.startswith("REACT_APP_BACKEND_URL="):
-            BASE_URL = line.split("=", 1)[1].strip().rstrip("/")
+    # Fallback: frontend/.env resolvido em relacao ao repositorio, nao a um
+    # caminho absoluto de container.
+    env_file = Path(__file__).resolve().parents[2] / "frontend" / ".env"
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            if line.startswith("REACT_APP_BACKEND_URL="):
+                BASE_URL = line.split("=", 1)[1].strip().rstrip("/")
+if not BASE_URL:
+    BASE_URL = "http://127.0.0.1:8001"
 
 API = f"{BASE_URL}/api"
 
-ADMIN_EMAIL = "jussaracavalcante25@gmail.com"
-ADMIN_PASSWORD = "Vanguarda@2026"
+# Credenciais lidas do ambiente — as mesmas que o backend usa para semear o
+# admin. Nunca fixe senha em codigo versionado.
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+    pytest.skip(
+        "Defina ADMIN_EMAIL e ADMIN_PASSWORD (os mesmos do backend) para rodar a suite.",
+        allow_module_level=True,
+    )
 
 
 # ---------------- Fixtures ----------------

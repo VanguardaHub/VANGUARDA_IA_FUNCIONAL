@@ -41,6 +41,13 @@ app = FastAPI(title="Vanguarda.IA")
 api_router = APIRouter(prefix="/api")
 
 JWT_ALGORITHM = "HS256"
+
+# Atributos do cookie de sessao. O padrao (Secure + SameSite=none) e o exigido
+# em producao atras de HTTPS. Em desenvolvimento sobre http://localhost o
+# navegador descarta um cookie Secure, entao ambos sao configuraveis:
+#   COOKIE_SECURE=false  COOKIE_SAMESITE=lax
+COOKIE_SECURE = (os.environ.get("COOKIE_SECURE", "true").strip().lower() != "false")
+COOKIE_SAMESITE = (os.environ.get("COOKIE_SAMESITE", "none").strip().lower() or "none")
 EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "")
 
 AI_MODELS = {
@@ -84,9 +91,9 @@ def create_refresh_token(user_id: str, token_version: int = 0) -> str:
 def set_jwt_cookies(response: Response, user: dict):
     ver = user.get("token_version", 0)
     response.set_cookie("access_token", create_access_token(user["user_id"], user["email"], ver),
-                        httponly=True, secure=True, samesite="none", max_age=900, path="/")
+                        httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=900, path="/")
     response.set_cookie("refresh_token", create_refresh_token(user["user_id"], ver),
-                        httponly=True, secure=True, samesite="none", max_age=604800, path="/")
+                        httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=604800, path="/")
 
 def public_user(user: dict) -> dict:
     user = dict(user)
@@ -353,8 +360,8 @@ async def google_session(request: Request, response: Response):
         "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
         "created_at": datetime.now(timezone.utc),
     })
-    response.set_cookie("session_token", session_token, httponly=True, secure=True,
-                        samesite="none", max_age=604800, path="/")
+    response.set_cookie("session_token", session_token, httponly=True, secure=COOKIE_SECURE,
+                        samesite=COOKIE_SAMESITE, max_age=604800, path="/")
     return public_user(user)
 
 @api_router.post("/auth/logout")
@@ -386,7 +393,7 @@ async def refresh(request: Request, response: Response):
     if not user or payload.get("ver", 0) != user.get("token_version", 0):
         raise HTTPException(status_code=401, detail="Sessão expirada")
     response.set_cookie("access_token", create_access_token(user["user_id"], user["email"], user.get("token_version", 0)),
-                        httponly=True, secure=True, samesite="none", max_age=900, path="/")
+                        httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=900, path="/")
     return {"message": "ok"}
 
 @api_router.post("/auth/forgot-password")

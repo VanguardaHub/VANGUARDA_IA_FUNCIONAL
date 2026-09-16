@@ -1,0 +1,127 @@
+{
+  "product_info": {
+    "name": "Vanguarda.IA",
+    "type": "SaaS B2B Marketing Agency Platform & AI Dashboard",
+    "language": "pt-BR",
+    "theme": "Dark Mode Sophisticated & High-Density Tactical Tech"
+  },
+  "design_philosophy": {
+    "archetype": "Performance Pro x Old Money Tech",
+    "vibe": "Deep Obsidian background with refined gold/emerald/violet accents, high-contrast typography, dense data visualization, and seamless AI co-pilot workflow",
+    "core_principles": [
+      "Fusion over Imitation: Swiss grid precision combined with dark obsidian glass surfaces and tactical neon status indicators",
+      "Emotion First: Power, authority, intelligence, and frictionless speed for agency operators",
+      "Content is King: Dynamic AI-generated marketing creatives, live Meta Ads pilots, and brand knowledge bases ('Bíblia')",
+      "Negative Space & Dense Grids: 1px crisp borders with generous micro-padding to avoid visual clutter"
+    ]
+  },
+  "typography": {
+    "headings": {
+      "font_family": "Plus Jakarta Sans, Syne, sans-serif",
+      "font_weights": {
+        "h1": "font-extrabold tracking-tight text-3xl sm:text-4xl lg:text-5xl",
+        "h2": "font-bold tracking-tight text-xl sm:text-2xl lg:text-3xl",
+        "h3": "font-semibold tracking-normal text-lg sm:text-xl",
+        "h4": "font-medium text-base sm:text-lg"
+      }
+    },
+    "body": {
+      "font_family": "Inter, system-ui, sans-serif",
+      "font_weights": {
+        "regular": "font-normal text-sm leading-relaxed",
+        "medium": "font-medium text-sm text-slate-300",
+        "subtle": "font-normal text-xs text-slate-400"
+      }
+    },
+    "mono_code": {
+      "font_family": "JetBrains Mono, Fira Code, monospace",
+      "use_cases": "KPI metrics, AI token consumption, prompt engineering inputs, model selection chips, Meta Ads IDs"
+    }
+  },
+  "color_system": {
+    "base": {
+      "background": "#090A0F",
+      "surface": "#11131A",
+      "surface_hover": "#1A1D26",
+      "card_bg": "rgba(17, 19, 26, 0.75)",
+      "border_color": "rgba(255, 255, 255, 0.08)",
+      "border_highlight": "rgba(99, 102, 241, 0.3)"
+    },
+    "text": {
+      "primary": "#F8FAFC",
+      "secondary": "#94A3B8",
+      "muted": "#64748B",
+      "accent": "#818CF8"
+    },
+    "brand_accents": {
+      "primary_violet": "#6366F1",
+      "primary_violet_glow": "rgba(99, 102, 241, 0.25)",
+      "emerald_growth": "#10B981",
+      "amber_warning": "#F59E0B",
+      "rose_alert": "#F43F5E",
+      "meta_blue": "#0666E5"
+    },
+    "ai_models_branding": {
+      "gpt_5_4_mini": {
+        "color": "#10A37F",
+        "label": "GPT-5.4 Mini",
+        "badge_bg": "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+      },
+      "claude_sonnet_4_6": {
+        "color": "#D97706",
+        "label": "Claude Sonnet 4.6",
+        "badge_bg": "bg-amber-500/10 text-amber-400 border-amber-500/20"
+      }
+    }
+  },
+  "layout_and_spacing": {
+    "grid_system": "Bento Grid Mode B (High Density Data)",
+    "container_padding": "p-4 sm:p-6 lg:p-8",
+    "card_padding": "p-5 sm:p-6",
+    "gap_scale": "gap-4 md:gap-6",
+    "sidebar": "w-64 fixed left-0 top-0 h-screen border-r border-slate-800 bg-[#0C0D13] z-40",
+    "header": "sticky top-0 z-30 h-16 backdrop-blur-xl bg-[#090A0F]/80 border-b border-slate-800/60 px-6 flex items-center justify-between"
+  },
+  "visual_enhancers": {
+    "glassmorphism": "backdrop-blur-xl bg-slate-900/60 border border-slate-800/80 shadow-2xl shadow-black/50",
+    "glowing_borders": "relative overflow-hidden before:absolute before:inset-0 before:p-[1px] before:bg-gradient-to-r before:from-indigo-500/40 before:via-violet-500/10 before:to-transparent before:rounded-xl",
+    "gradients": "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500",
+    "card_hover": "transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-700 hover:shadow-lg hover:shadow-indigo-500/5"
+  },
+  "component_guidelines": {
+    "dashboard_kpi_cards": "Minimalist cardless or 1px stroke containers with delta growth tags, sparklines (Recharts area charts with gradient fill), and high-contrast numbers.",
+    "ai_generator": "Split-view interactive panel: left sidebar with parameter controls (Client dropdown, AI model toggle GPT-5.4 / Claude, Prompt formula, image generation toggle, tone of voice slider) and right live preview sandbox (Instagram post mockup, Stories mockup, LinkedIn ad mockup).",
+    "knowledge_base_biblia": "Two tabs: Document Management (PDFs, Brand Personas, Guidelines upload) and AI Semantic Q&A (instant chat asking queries across uploaded agency knowledge with source citation chips).",
+    "campaigns_meta_ads": "Table and grid switcher with status tags (Ativa, Pausada, Em Análise), visual ROAS dial, daily spend breakdown, and 'Sincronizar Meta Ads' pilot mock trigger.",
+    "clients_crud": "Grid of agency client cards with brand logo, assigned account manager, active campaigns count, and quick 'Gerar Peça' shortcut button.",
+    "logs_and_alerts": "Live timeline feed with activity filter tags (Geração IA, Erro API, Novo Cliente, Meta Ads Sync) and system health status indicators.",
+    "admin_settings": "Tabs for Model Defaults, API Keys, Team Permissions, and Agency Branding (Logo, Custom Subdomain).",
+    "subscription_pricing": "3 tier plans (Starter Agência, Pro Scale, Enterprise White-label) with billing toggle (Mensal/Anual), feature matrices, and Stripe checkout modal trigger."
+  },
+  "media": {
+    "image_urls": {
+      "agency_workspace": "https://images.unsplash.com/photo-1557804506-669a67965ba0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzV8MHwxfHNlYXJjaHw0fHxjcmVhdGl2ZSUyMG1hcmtldGluZyUyMHRlYW0lMjBvZmZpY2UlMjBtZWV0aW5nfGVufDB8fHx8MTc4OTU3Nzk5NXww&ixlib=rb-4.1.0&q=85",
+      "marketing_dashboard_preview": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzJ8MHwxfHNlYXJjaHwxfHxkaWdpdGFsJTIwbWFya2V0aW5nJTIwc3RyYXRlZ3klMjBhZ2VuY3klMjBtZXRyaWNzfGVufDB8fHx8MTc4OTU3Nzk5OXww&ixlib=rb-4.1.0&q=85",
+      "ai_brain_tech": "https://images.unsplash.com/photo-1677442135703-1787eea5ce01?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzV8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBmdXR1cmlzdGljJTIwYXJ0aWZpY2lhbCUyMGludGVsbGlnZW5jZSUyMHRlY2hub2xvZ3klMjBwcmV2aWV3fGVufDB8fHx8MTc4OTU3Nzk5NXww&ixlib=rb-4.1.0&q=85",
+      "marketing_strategy_wheel": "https://images.pexels.com/photos/6231/marketing-color-colors-wheel.jpg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "team_brainstorming": "https://images.pexels.com/photos/7710074/pexels-photo-7710074.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Ensure the application UI is fully in Brazilian Portuguese (pt-BR).",
+    "Maintain high-contrast dark mode aesthetic (#090A0F background with slate/indigo cards).",
+    "All main views MUST be reachable via the sidebar navigation: Dashboard, Clientes, Geração de Peças, Bíblia (Conhecimento), Campanhas (Meta Ads), Logs & Alertas, Configurações Admin, Planos & Assinatura.",
+    "Include model selector dropdown with explicit support for GPT-5.4 Mini and Claude Sonnet 4.6.",
+    "Include data-testid on every interactive button, input, card, and tab for reliable automation testing.",
+    "Use Lucide icons (lucide-react) and Recharts for responsive analytics charts.",
+    "Integrate sonner for smooth toast feedback on form submit, AI generation, and client creation."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": {
+    "anti_patterns": [
+      "No full-screen default light backgrounds",
+      "No missing hover text states",
+      "No generic unstyled HTML select tags - use Radix/Shadcn UI dropdowns"
+    ],
+    "testing_requirement": "Every clickable or key data element must have data-testid attributes (e.g., data-testid='generate-piece-submit-button')."
+  }
+}

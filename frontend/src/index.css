@@ -6,26 +6,26 @@
 
 @layer base {
     :root {
-        --background: 228 22% 4%;
+        --background: 240 8% 5%;
         --foreground: 210 40% 98%;
-        --card: 226 22% 8%;
+        --card: 240 10% 9%;
         --card-foreground: 210 40% 98%;
-        --popover: 226 22% 8%;
+        --popover: 240 10% 9%;
         --popover-foreground: 210 40% 98%;
-        --primary: 239 84% 67%;
+        --primary: 355 100% 59%;
         --primary-foreground: 0 0% 100%;
-        --secondary: 224 20% 13%;
+        --secondary: 240 8% 13%;
         --secondary-foreground: 210 40% 98%;
-        --muted: 224 20% 13%;
-        --muted-foreground: 215 20% 65%;
-        --accent: 239 84% 67%;
+        --muted: 240 8% 13%;
+        --muted-foreground: 240 6% 65%;
+        --accent: 355 100% 59%;
         --accent-foreground: 0 0% 100%;
         --destructive: 348 90% 60%;
         --destructive-foreground: 0 0% 98%;
         --border: 0 0% 100% / 0.08;
-        --input: 224 20% 16%;
-        --ring: 239 84% 67%;
-        --chart-1: 239 84% 67%;
+        --input: 240 8% 16%;
+        --ring: 355 100% 59%;
+        --chart-1: 355 100% 59%;
         --chart-2: 160 84% 39%;
         --chart-3: 38 92% 50%;
         --chart-4: 348 90% 60%;
@@ -41,7 +41,7 @@
     body {
         @apply bg-background text-foreground;
         font-family: 'Inter', system-ui, sans-serif;
-        background-color: #090A0F;
+        background-color: #0B0B0D;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }
@@ -55,7 +55,7 @@
 
 @layer components {
     .glass-card {
-        @apply backdrop-blur-xl bg-[#11131A]/75 border border-white/[0.08] shadow-2xl shadow-black/50 rounded-xl;
+        @apply backdrop-blur-xl bg-[#15151A]/75 border border-white/[0.08] shadow-2xl shadow-black/50 rounded-xl;
     }
     .glow-border {
         position: relative;
@@ -66,7 +66,7 @@
         position: absolute;
         inset: 0;
         padding: 1px;
-        background: linear-gradient(120deg, rgba(99,102,241,0.4), rgba(139,92,246,0.1), transparent);
+        background: linear-gradient(120deg, rgba(255, 45, 64,0.4), rgba(255, 90, 106,0.1), transparent);
         border-radius: inherit;
         -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
         -webkit-mask-composite: xor;
@@ -88,18 +88,18 @@
     height: 8px;
 }
 ::-webkit-scrollbar-track {
-    background: #0C0D13;
+    background: #0E0E11;
 }
 ::-webkit-scrollbar-thumb {
-    background: #262A38;
+    background: #2A2A33;
     border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #363B4D;
+    background: #3A3A45;
 }
 
 ::selection {
-    background: rgba(99, 102, 241, 0.35);
+    background: rgba(255, 45, 64, 0.35);
     color: #F8FAFC;
 }
 
@@ -110,7 +110,7 @@
 .streaming-cursor::after {
     content: '▍';
     animation: blink-cursor 0.8s infinite;
-    color: #818CF8;
+    color: #FF5A6A;
 }
 
 @keyframes fade-up {

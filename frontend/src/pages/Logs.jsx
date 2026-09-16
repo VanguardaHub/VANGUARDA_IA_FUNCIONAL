@@ -12,8 +12,8 @@ import { format, parseISO } from "date-fns";
 const KIND_COLORS = {
   geracao: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   meta: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  cliente: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
-  biblia: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+  cliente: "bg-red-500/10 text-red-400 border-red-500/20",
+  biblia: "bg-rose-500/10 text-rose-400 border-rose-500/20",
   alerta: "bg-amber-500/10 text-amber-400 border-amber-500/20",
   peca: "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20",
   auth: "bg-slate-500/10 text-slate-400 border-slate-500/20",
@@ -76,7 +76,7 @@ export default function Logs() {
               <Plus className="w-4 h-4 mr-2" /> Nova regra de alerta
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-[#11131A] border-slate-800 text-slate-100" data-testid="new-rule-dialog">
+          <DialogContent className="bg-[#15151A] border-slate-800 text-slate-100" data-testid="new-rule-dialog">
             <DialogHeader>
               <DialogTitle className="font-display">Regra de alerta</DialogTitle>
             </DialogHeader>
@@ -84,16 +84,16 @@ export default function Logs() {
               <div className="space-y-2">
                 <Label className="text-slate-300">Nome *</Label>
                 <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="bg-[#0C0D13] border-slate-700" placeholder="CTR abaixo do saudável" data-testid="rule-name-input" />
+                  className="bg-[#0E0E11] border-slate-700" placeholder="CTR abaixo do saudável" data-testid="rule-name-input" />
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-2">
                   <Label className="text-slate-300">Métrica</Label>
                   <Select value={form.metric} onValueChange={(v) => setForm({ ...form, metric: v })}>
-                    <SelectTrigger className="bg-[#0C0D13] border-slate-700" data-testid="rule-metric-select">
+                    <SelectTrigger className="bg-[#0E0E11] border-slate-700" data-testid="rule-metric-select">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#11131A] border-slate-800 text-slate-200">
+                    <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200">
                       {Object.entries(METRIC_LABELS).map(([k, v]) => (
                         <SelectItem key={k} value={k}>{v}</SelectItem>
                       ))}
@@ -103,10 +103,10 @@ export default function Logs() {
                 <div className="space-y-2">
                   <Label className="text-slate-300">Condição</Label>
                   <Select value={form.operator} onValueChange={(v) => setForm({ ...form, operator: v })}>
-                    <SelectTrigger className="bg-[#0C0D13] border-slate-700" data-testid="rule-operator-select">
+                    <SelectTrigger className="bg-[#0E0E11] border-slate-700" data-testid="rule-operator-select">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#11131A] border-slate-800 text-slate-200">
+                    <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200">
                       <SelectItem value="gt">Acima de</SelectItem>
                       <SelectItem value="lt">Abaixo de</SelectItem>
                     </SelectContent>
@@ -116,7 +116,7 @@ export default function Logs() {
                   <Label className="text-slate-300">Limite</Label>
                   <Input type="number" step="0.01" required value={form.threshold}
                     onChange={(e) => setForm({ ...form, threshold: e.target.value })}
-                    className="bg-[#0C0D13] border-slate-700" data-testid="rule-threshold-input" />
+                    className="bg-[#0E0E11] border-slate-700" data-testid="rule-threshold-input" />
                 </div>
               </div>
               <Button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white" data-testid="rule-submit-button">
@@ -132,14 +132,14 @@ export default function Logs() {
           <div className="flex gap-2 flex-wrap" data-testid="logs-filters">
             <button onClick={() => setFilter("all")} data-testid="filter-all"
               className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                filter === "all" ? "bg-indigo-500/10 text-indigo-300 border-indigo-500/30" : "text-slate-400 border-slate-800 hover:border-slate-700"
+                filter === "all" ? "bg-red-500/10 text-red-300 border-red-500/30" : "text-slate-400 border-slate-800 hover:border-slate-700"
               }`}>
               Todos
             </button>
             {kinds.map((k) => (
               <button key={k} onClick={() => setFilter(k)} data-testid={`filter-${k}`}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                  filter === k ? "bg-indigo-500/10 text-indigo-300 border-indigo-500/30" : "text-slate-400 border-slate-800 hover:border-slate-700"
+                  filter === k ? "bg-red-500/10 text-red-300 border-red-500/30" : "text-slate-400 border-slate-800 hover:border-slate-700"
                 }`}>
                 {KIND_LABELS[k] || k}
               </button>
@@ -148,7 +148,7 @@ export default function Logs() {
 
           <div className="glass-card p-5" data-testid="logs-timeline">
             <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
-              <Activity className="w-4 h-4 text-indigo-400" /> Timeline de atividade
+              <Activity className="w-4 h-4 text-red-400" /> Timeline de atividade
             </h3>
             {filtered.length === 0 ? (
               <p className="text-sm text-slate-500">Nenhum evento neste filtro.</p>

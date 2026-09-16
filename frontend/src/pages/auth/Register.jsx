@@ -39,21 +39,21 @@ export default function Register() {
           <Label htmlFor="name" className="text-slate-300">Nome completo</Label>
           <Input id="name" required value={form.name} data-testid="register-name-input"
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="bg-[#0C0D13] border-slate-700 h-11" placeholder="Maria Silva" />
+            className="bg-[#0E0E11] border-slate-700 h-11" placeholder="Maria Silva" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="email" className="text-slate-300">E-mail</Label>
           <Input id="email" type="email" required value={form.email} data-testid="register-email-input"
             onChange={(e) => setForm({ ...form, email: e.target.value })}
-            className="bg-[#0C0D13] border-slate-700 h-11" placeholder="voce@agencia.com.br" />
+            className="bg-[#0E0E11] border-slate-700 h-11" placeholder="voce@agencia.com.br" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="password" className="text-slate-300">Senha</Label>
           <Input id="password" type="password" required minLength={6} value={form.password} data-testid="register-password-input"
             onChange={(e) => setForm({ ...form, password: e.target.value })}
-            className="bg-[#0C0D13] border-slate-700 h-11" placeholder="Mínimo 6 caracteres" />
+            className="bg-[#0E0E11] border-slate-700 h-11" placeholder="Mínimo 6 caracteres" />
         </div>
-        <Button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white h-11" data-testid="register-submit-button">
+        <Button type="submit" disabled={loading} className="w-full bg-red-600 hover:bg-red-500 text-white h-11" data-testid="register-submit-button">
           {loading ? "Criando..." : "Criar conta grátis"}
         </Button>
       </form>
@@ -65,7 +65,7 @@ export default function Register() {
       <GoogleButton testid="google-register-button" />
       <p className="text-sm text-slate-400 text-center mt-6">
         Já tem conta?{" "}
-        <Link to="/login" className="text-indigo-400 hover:text-indigo-300 font-medium" data-testid="go-to-login-link">Entrar</Link>
+        <Link to="/login" className="text-red-400 hover:text-red-300 font-medium" data-testid="go-to-login-link">Entrar</Link>
       </p>
     </AuthShell>
   );

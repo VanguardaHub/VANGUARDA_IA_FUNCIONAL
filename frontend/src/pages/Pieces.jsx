@@ -15,7 +15,7 @@ const STATUS_LABELS = { rascunho: "Rascunho", aprovada: "Aprovada", publicada: "
 const STATUS_STYLES = {
   rascunho: "bg-slate-500/10 text-slate-400 border-slate-500/20",
   aprovada: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  publicada: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+  publicada: "bg-red-500/10 text-red-400 border-red-500/20",
 };
 const MODEL_BADGES = {
   "gpt-5.4-mini": "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -68,17 +68,17 @@ export default function Pieces() {
         </div>
         <div className="flex gap-3">
           <Select value={filterClient} onValueChange={setFilterClient}>
-            <SelectTrigger className="bg-[#0C0D13] border-slate-700 w-48" data-testid="pieces-filter-client">
+            <SelectTrigger className="bg-[#0E0E11] border-slate-700 w-48" data-testid="pieces-filter-client">
               <SelectValue placeholder="Todos os clientes" />
             </SelectTrigger>
-            <SelectContent className="bg-[#11131A] border-slate-800 text-slate-200">
+            <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200">
               <SelectItem value="all">Todos os clientes</SelectItem>
               {clients.map((c) => (
                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Button onClick={() => navigate("/gerar")} className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-full" data-testid="new-piece-button">
+          <Button onClick={() => navigate("/gerar")} className="bg-red-600 hover:bg-red-500 text-white rounded-full" data-testid="new-piece-button">
             <Sparkles className="w-4 h-4 mr-2" /> Nova peça
           </Button>
         </div>
@@ -88,7 +88,7 @@ export default function Pieces() {
         <div className="glass-card p-12 text-center" data-testid="pieces-empty">
           <Layers className="w-10 h-10 text-slate-600 mx-auto mb-4" />
           <p className="text-slate-400 mb-4">Nenhuma peça ainda. Gere a primeira com IA.</p>
-          <Button onClick={() => navigate("/gerar")} className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-full" data-testid="empty-generate-button">
+          <Button onClick={() => navigate("/gerar")} className="bg-red-600 hover:bg-red-500 text-white rounded-full" data-testid="empty-generate-button">
             <Sparkles className="w-4 h-4 mr-2" /> Gerar peça
           </Button>
         </div>
@@ -117,7 +117,7 @@ export default function Pieces() {
                     {p.content}
                   </p>
                   <button onClick={() => setExpanded(expanded === p.id ? null : p.id)}
-                    className="text-xs text-indigo-400 hover:text-indigo-300 mt-1" data-testid={`piece-expand-${p.id}`}>
+                    className="text-xs text-red-400 hover:text-red-300 mt-1" data-testid={`piece-expand-${p.id}`}>
                     {expanded === p.id ? "Ver menos" : "Ver peça completa"}
                   </button>
                 </div>

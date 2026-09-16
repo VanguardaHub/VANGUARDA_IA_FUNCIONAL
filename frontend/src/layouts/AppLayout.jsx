@@ -34,13 +34,13 @@ export default function AppLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-[#090A0F] noise-overlay" data-testid="app-layout">
-      <aside className="w-64 fixed left-0 top-0 h-screen border-r border-slate-800 bg-[#0C0D13] z-40 hidden lg:flex flex-col" data-testid="sidebar">
+    <div className="min-h-screen bg-[#0B0B0D] noise-overlay" data-testid="app-layout">
+      <aside className="w-64 fixed left-0 top-0 h-screen border-r border-slate-800 bg-[#0E0E11] z-40 hidden lg:flex flex-col" data-testid="sidebar">
         <div className="h-16 flex items-center gap-3 px-6 border-b border-slate-800/60">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center">
             <Zap className="w-4 h-4 text-white" />
           </div>
-          <span className="font-display font-extrabold text-lg tracking-tight">Vanguarda<span className="text-indigo-400">.IA</span></span>
+          <span className="font-display font-extrabold text-lg tracking-tight">Vanguarda<span className="text-red-400">.IA</span></span>
         </div>
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
           {NAV.map(({ to, label, icon: Icon, testid }) => (
@@ -51,7 +51,7 @@ export default function AppLayout() {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
                   isActive
-                    ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
+                    ? "bg-red-500/10 text-red-300 border border-red-500/20"
                     : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] border border-transparent"
                 }`
               }
@@ -65,25 +65,25 @@ export default function AppLayout() {
           <div className="glass-card p-3 flex items-center gap-3">
             <Avatar className="w-9 h-9">
               <AvatarImage src={user?.picture} />
-              <AvatarFallback className="bg-indigo-600 text-white text-xs">
+              <AvatarFallback className="bg-red-600 text-white text-xs">
                 {user?.name?.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate" data-testid="sidebar-user-name">{user?.name}</p>
-              <p className="text-xs text-indigo-400 font-mono" data-testid="sidebar-user-plan">{PLAN_LABELS[user?.plan] || user?.plan}</p>
+              <p className="text-xs text-red-400 font-mono" data-testid="sidebar-user-plan">{PLAN_LABELS[user?.plan] || user?.plan}</p>
             </div>
           </div>
         </div>
       </aside>
 
       <div className="lg:pl-64 flex flex-col min-h-screen">
-        <header className="sticky top-0 z-30 h-16 backdrop-blur-xl bg-[#090A0F]/80 border-b border-slate-800/60 px-6 flex items-center justify-between" data-testid="app-header">
+        <header className="sticky top-0 z-30 h-16 backdrop-blur-xl bg-[#0B0B0D]/80 border-b border-slate-800/60 px-6 flex items-center justify-between" data-testid="app-header">
           <nav className="flex lg:hidden gap-1 overflow-x-auto">
             {NAV.map(({ to, icon: Icon, testid }) => (
               <NavLink key={to} to={to} data-testid={`${testid}-mobile`}
                 className={({ isActive }) =>
-                  `p-2 rounded-lg transition-colors ${isActive ? "bg-indigo-500/10 text-indigo-300" : "text-slate-400 hover:text-slate-200"}`
+                  `p-2 rounded-lg transition-colors ${isActive ? "bg-red-500/10 text-red-300" : "text-slate-400 hover:text-slate-200"}`
                 }>
                 <Icon className="w-5 h-5" />
               </NavLink>
@@ -94,14 +94,14 @@ export default function AppLayout() {
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger data-testid="user-menu-trigger" className="outline-none">
-              <Avatar className="w-9 h-9 ring-2 ring-indigo-500/30 hover:ring-indigo-500/60 transition-all">
+              <Avatar className="w-9 h-9 ring-2 ring-red-500/30 hover:ring-red-500/60 transition-all">
                 <AvatarImage src={user?.picture} />
-                <AvatarFallback className="bg-indigo-600 text-white text-xs">
+                <AvatarFallback className="bg-red-600 text-white text-xs">
                   {user?.name?.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-[#11131A] border-slate-800 text-slate-200 w-56">
+            <DropdownMenuContent align="end" className="bg-[#15151A] border-slate-800 text-slate-200 w-56">
               <DropdownMenuLabel>
                 <p className="font-medium">{user?.name}</p>
                 <p className="text-xs text-slate-500 font-normal">{user?.email}</p>

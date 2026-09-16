@@ -25,8 +25,8 @@ function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading)
     return (
-      <div className="min-h-screen bg-[#090A0F] flex items-center justify-center" data-testid="auth-loading">
-        <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#0B0B0D] flex items-center justify-center" data-testid="auth-loading">
+        <div className="w-10 h-10 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   if (!user) return <Navigate to="/login" replace />;

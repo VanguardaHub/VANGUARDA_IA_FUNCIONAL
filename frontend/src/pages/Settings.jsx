@@ -47,7 +47,7 @@ export default function Settings() {
   if (!settings)
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
 
@@ -59,7 +59,7 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="models" className="space-y-5">
-        <TabsList className="bg-[#11131A] border border-slate-800" data-testid="settings-tabs">
+        <TabsList className="bg-[#15151A] border border-slate-800" data-testid="settings-tabs">
           <TabsTrigger value="models" data-testid="settings-tab-models"><Cpu className="w-3.5 h-3.5 mr-1.5" /> Modelos de IA</TabsTrigger>
           <TabsTrigger value="agency" data-testid="settings-tab-agency"><Building2 className="w-3.5 h-3.5 mr-1.5" /> Agência</TabsTrigger>
           <TabsTrigger value="integrations" data-testid="settings-tab-integrations"><KeyRound className="w-3.5 h-3.5 mr-1.5" /> Integrações</TabsTrigger>
@@ -79,7 +79,7 @@ export default function Settings() {
                     data-testid={`default-model-${m.id}`}
                     className={`p-4 rounded-lg border text-left transition-all ${
                       settings.default_model === m.id
-                        ? "border-indigo-500/50 bg-indigo-500/10"
+                        ? "border-red-500/50 bg-red-500/10"
                         : "border-slate-800 bg-white/[0.02] hover:border-slate-700"
                     }`}>
                     <p className="text-sm font-medium">{m.label}</p>
@@ -91,17 +91,17 @@ export default function Settings() {
             <div className="space-y-2">
               <Label className="text-slate-300">Tom de voz padrão</Label>
               <Select value={settings.default_tone} onValueChange={(v) => setSettings({ ...settings, default_tone: v })}>
-                <SelectTrigger className="bg-[#0C0D13] border-slate-700 capitalize" data-testid="default-tone-select">
+                <SelectTrigger className="bg-[#0E0E11] border-slate-700 capitalize" data-testid="default-tone-select">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#11131A] border-slate-800 text-slate-200">
+                <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200">
                   {TONES.map((t) => (
                     <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={save} disabled={saving} className="bg-indigo-600 hover:bg-indigo-500 text-white" data-testid="settings-save-models">
+            <Button onClick={save} disabled={saving} className="bg-red-600 hover:bg-red-500 text-white" data-testid="settings-save-models">
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               Salvar preferências
             </Button>
@@ -113,9 +113,9 @@ export default function Settings() {
             <div className="space-y-2">
               <Label className="text-slate-300">Nome da agência</Label>
               <Input value={settings.agency_name || ""} onChange={(e) => setSettings({ ...settings, agency_name: e.target.value })}
-                className="bg-[#0C0D13] border-slate-700" placeholder="Vanguarda Digital" data-testid="agency-name-input" />
+                className="bg-[#0E0E11] border-slate-700" placeholder="Vanguarda Digital" data-testid="agency-name-input" />
             </div>
-            <Button onClick={save} disabled={saving} className="bg-indigo-600 hover:bg-indigo-500 text-white" data-testid="settings-save-agency">
+            <Button onClick={save} disabled={saving} className="bg-red-600 hover:bg-red-500 text-white" data-testid="settings-save-agency">
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               Salvar
             </Button>
@@ -157,7 +157,7 @@ export default function Settings() {
               </div>
               <span className="text-xs font-medium text-emerald-400" data-testid="ai-status">Ativo</span>
             </div>
-            <Button onClick={save} disabled={saving} className="bg-indigo-600 hover:bg-indigo-500 text-white" data-testid="settings-save-integrations">
+            <Button onClick={save} disabled={saving} className="bg-red-600 hover:bg-red-500 text-white" data-testid="settings-save-integrations">
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               Salvar integrações
             </Button>

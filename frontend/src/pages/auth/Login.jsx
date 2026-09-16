@@ -26,14 +26,14 @@ export function GoogleButton({ testid }) {
 
 export function AuthShell({ children, title, subtitle }) {
   return (
-    <div className="min-h-screen bg-[#090A0F] noise-overlay flex items-center justify-center p-6">
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-indigo-600/15 blur-[120px] rounded-full pointer-events-none" />
+    <div className="min-h-screen bg-[#0B0B0D] noise-overlay flex items-center justify-center p-6">
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-red-600/15 blur-[120px] rounded-full pointer-events-none" />
       <div className="w-full max-w-md relative">
         <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center">
             <Zap className="w-5 h-5 text-white" />
           </div>
-          <span className="font-display font-extrabold text-xl tracking-tight">Vanguarda<span className="text-indigo-400">.IA</span></span>
+          <span className="font-display font-extrabold text-xl tracking-tight">Vanguarda<span className="text-red-400">.IA</span></span>
         </div>
         <div className="glass-card p-8">
           <h1 className="font-display font-bold text-2xl tracking-tight mb-1">{title}</h1>
@@ -76,18 +76,18 @@ export default function Login() {
           <Label htmlFor="email" className="text-slate-300">E-mail</Label>
           <Input id="email" type="email" required value={form.email} data-testid="login-email-input"
             onChange={(e) => setForm({ ...form, email: e.target.value })}
-            className="bg-[#0C0D13] border-slate-700 h-11" placeholder="voce@agencia.com.br" />
+            className="bg-[#0E0E11] border-slate-700 h-11" placeholder="voce@agencia.com.br" />
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="password" className="text-slate-300">Senha</Label>
-            <Link to="/forgot-password" className="text-xs text-indigo-400 hover:text-indigo-300" data-testid="forgot-password-link">Esqueci a senha</Link>
+            <Link to="/forgot-password" className="text-xs text-red-400 hover:text-red-300" data-testid="forgot-password-link">Esqueci a senha</Link>
           </div>
           <Input id="password" type="password" required value={form.password} data-testid="login-password-input"
             onChange={(e) => setForm({ ...form, password: e.target.value })}
-            className="bg-[#0C0D13] border-slate-700 h-11" placeholder="••••••••" />
+            className="bg-[#0E0E11] border-slate-700 h-11" placeholder="••••••••" />
         </div>
-        <Button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white h-11" data-testid="login-submit-button">
+        <Button type="submit" disabled={loading} className="w-full bg-red-600 hover:bg-red-500 text-white h-11" data-testid="login-submit-button">
           {loading ? "Entrando..." : "Entrar"}
         </Button>
       </form>
@@ -99,7 +99,7 @@ export default function Login() {
       <GoogleButton testid="google-login-button" />
       <p className="text-sm text-slate-400 text-center mt-6">
         Não tem conta?{" "}
-        <Link to="/register" className="text-indigo-400 hover:text-indigo-300 font-medium" data-testid="go-to-register-link">Criar conta</Link>
+        <Link to="/register" className="text-red-400 hover:text-red-300 font-medium" data-testid="go-to-register-link">Criar conta</Link>
       </p>
     </AuthShell>
   );

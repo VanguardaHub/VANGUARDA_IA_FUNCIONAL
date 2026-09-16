@@ -39,11 +39,11 @@ export default function PaymentResult() {
   }, [status, sessionId, checkAuth]);
 
   return (
-    <div className="min-h-screen bg-[#090A0F] flex items-center justify-center p-6" data-testid="payment-result-page">
+    <div className="min-h-screen bg-[#0B0B0D] flex items-center justify-center p-6" data-testid="payment-result-page">
       <div className="glass-card p-10 max-w-md w-full text-center">
         {(state === "checking") && (
           <>
-            <Loader2 className="w-12 h-12 text-indigo-400 animate-spin mx-auto mb-4" />
+            <Loader2 className="w-12 h-12 text-red-400 animate-spin mx-auto mb-4" />
             <h1 className="font-display font-bold text-2xl mb-2">Confirmando pagamento...</h1>
             <p className="text-sm text-slate-400">Aguarde enquanto validamos sua assinatura.</p>
           </>
@@ -54,7 +54,7 @@ export default function PaymentResult() {
             <h1 className="font-display font-bold text-2xl mb-2" data-testid="payment-success-title">Assinatura ativada!</h1>
             <p className="text-sm text-slate-400 mb-6">Seu plano foi atualizado. Aproveite todos os recursos da Vanguarda.IA.</p>
             <Link to="/dashboard">
-              <Button className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-full px-8" data-testid="go-dashboard-button">
+              <Button className="bg-red-600 hover:bg-red-500 text-white rounded-full px-8" data-testid="go-dashboard-button">
                 Ir para o dashboard
               </Button>
             </Link>
@@ -78,7 +78,7 @@ export default function PaymentResult() {
             <h1 className="font-display font-bold text-2xl mb-2" data-testid="payment-cancel-title">Pagamento não concluído</h1>
             <p className="text-sm text-slate-400 mb-6">Nenhuma cobrança foi feita. Você pode tentar novamente quando quiser.</p>
             <Link to="/planos">
-              <Button className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-full px-8" data-testid="retry-plans-button">
+              <Button className="bg-red-600 hover:bg-red-500 text-white rounded-full px-8" data-testid="retry-plans-button">
                 Ver planos
               </Button>
             </Link>

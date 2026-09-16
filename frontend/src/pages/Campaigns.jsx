@@ -21,7 +21,7 @@ function RoasDial({ roas }) {
   return (
     <div className="relative w-20 h-20">
       <svg viewBox="0 0 80 80" className="w-20 h-20 -rotate-90">
-        <circle cx="40" cy="40" r="34" fill="none" stroke="#1E2230" strokeWidth="7" />
+        <circle cx="40" cy="40" r="34" fill="none" stroke="#1F1F26" strokeWidth="7" />
         <circle cx="40" cy="40" r="34" fill="none" stroke={color} strokeWidth="7"
           strokeDasharray={`${pct * 213.6} 213.6`} strokeLinecap="round" />
       </svg>
@@ -97,21 +97,21 @@ export default function Campaigns() {
         <div className="flex gap-3">
           <div className="flex rounded-lg border border-slate-800 overflow-hidden">
             <button onClick={() => setView("grid")} data-testid="view-grid-button"
-              className={`p-2.5 transition-colors ${view === "grid" ? "bg-indigo-500/10 text-indigo-300" : "text-slate-500 hover:text-slate-300"}`}>
+              className={`p-2.5 transition-colors ${view === "grid" ? "bg-red-500/10 text-red-300" : "text-slate-500 hover:text-slate-300"}`}>
               <LayoutGrid className="w-4 h-4" />
             </button>
             <button onClick={() => setView("table")} data-testid="view-table-button"
-              className={`p-2.5 transition-colors ${view === "table" ? "bg-indigo-500/10 text-indigo-300" : "text-slate-500 hover:text-slate-300"}`}>
+              className={`p-2.5 transition-colors ${view === "table" ? "bg-red-500/10 text-red-300" : "text-slate-500 hover:text-slate-300"}`}>
               <TableIcon className="w-4 h-4" />
             </button>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-full" data-testid="new-campaign-button">
+              <Button className="bg-red-600 hover:bg-red-500 text-white rounded-full" data-testid="new-campaign-button">
                 <Plus className="w-4 h-4 mr-2" /> Nova campanha
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-[#11131A] border-slate-800 text-slate-100" data-testid="new-campaign-dialog">
+            <DialogContent className="bg-[#15151A] border-slate-800 text-slate-100" data-testid="new-campaign-dialog">
               <DialogHeader>
                 <DialogTitle className="font-display">Nova campanha — piloto Meta Ads</DialogTitle>
               </DialogHeader>
@@ -119,10 +119,10 @@ export default function Campaigns() {
                 <div className="space-y-2">
                   <Label className="text-slate-300">Cliente *</Label>
                   <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })} required>
-                    <SelectTrigger className="bg-[#0C0D13] border-slate-700" data-testid="campaign-client-select">
+                    <SelectTrigger className="bg-[#0E0E11] border-slate-700" data-testid="campaign-client-select">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#11131A] border-slate-800 text-slate-200">
+                    <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200">
                       {clients.map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
@@ -132,16 +132,16 @@ export default function Campaigns() {
                 <div className="space-y-2">
                   <Label className="text-slate-300">Nome da campanha *</Label>
                   <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="bg-[#0C0D13] border-slate-700" placeholder="Conversões — Black Friday" data-testid="campaign-name-input" />
+                    className="bg-[#0E0E11] border-slate-700" placeholder="Conversões — Black Friday" data-testid="campaign-name-input" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-slate-300">Objetivo</Label>
                     <Select value={form.objective} onValueChange={(v) => setForm({ ...form, objective: v })}>
-                      <SelectTrigger className="bg-[#0C0D13] border-slate-700" data-testid="campaign-objective-select">
+                      <SelectTrigger className="bg-[#0E0E11] border-slate-700" data-testid="campaign-objective-select">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-[#11131A] border-slate-800 text-slate-200">
+                      <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200">
                         {["Conversões", "Tráfego", "Remarketing", "Reconhecimento", "Leads"].map((o) => (
                           <SelectItem key={o} value={o}>{o}</SelectItem>
                         ))}
@@ -152,10 +152,10 @@ export default function Campaigns() {
                     <Label className="text-slate-300">Orçamento diário (R$)</Label>
                     <Input type="number" min="1" step="0.01" value={form.budget_daily}
                       onChange={(e) => setForm({ ...form, budget_daily: e.target.value })}
-                      className="bg-[#0C0D13] border-slate-700" data-testid="campaign-budget-input" />
+                      className="bg-[#0E0E11] border-slate-700" data-testid="campaign-budget-input" />
                   </div>
                 </div>
-                <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white" data-testid="campaign-submit-button">
+                <Button type="submit" className="w-full bg-red-600 hover:bg-red-500 text-white" data-testid="campaign-submit-button">
                   Criar campanha
                 </Button>
               </form>

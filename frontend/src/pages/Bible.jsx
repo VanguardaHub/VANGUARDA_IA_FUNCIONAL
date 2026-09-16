@@ -83,7 +83,7 @@ export default function Bible() {
       </div>
 
       <Tabs defaultValue="ask" className="space-y-5">
-        <TabsList className="bg-[#11131A] border border-slate-800" data-testid="bible-tabs">
+        <TabsList className="bg-[#15151A] border border-slate-800" data-testid="bible-tabs">
           <TabsTrigger value="ask" data-testid="bible-tab-ask">Consulta com IA</TabsTrigger>
           <TabsTrigger value="docs" data-testid="bible-tab-docs">Documentos ({docs.length})</TabsTrigger>
         </TabsList>
@@ -96,21 +96,21 @@ export default function Bible() {
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && !asking && ask()}
-                  className="bg-[#0C0D13] border-slate-700 h-11"
+                  className="bg-[#0E0E11] border-slate-700 h-11"
                   placeholder="Ex.: Qual o tom de voz do Café Aroma? Qual o CTR saudável para Meta Ads?"
                   data-testid="bible-question-input"
                 />
               </div>
               <Select value={model} onValueChange={setModel}>
-                <SelectTrigger className="bg-[#0C0D13] border-slate-700 w-52" data-testid="bible-model-select">
+                <SelectTrigger className="bg-[#0E0E11] border-slate-700 w-52" data-testid="bible-model-select">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#11131A] border-slate-800 text-slate-200">
+                <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200">
                   <SelectItem value="gpt-5.4-mini" data-testid="bible-model-gpt">GPT-5.4 Mini</SelectItem>
                   <SelectItem value="claude-sonnet-4-6" data-testid="bible-model-claude">Claude Sonnet 4.6</SelectItem>
                 </SelectContent>
               </Select>
-              <Button onClick={ask} disabled={asking} className="bg-indigo-600 hover:bg-indigo-500 text-white h-11" data-testid="bible-ask-button">
+              <Button onClick={ask} disabled={asking} className="bg-red-600 hover:bg-red-500 text-white h-11" data-testid="bible-ask-button">
                 {asking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
             </div>
@@ -120,13 +120,13 @@ export default function Bible() {
                 {sources.length > 0 && (
                   <div className="flex gap-2 flex-wrap" data-testid="bible-sources">
                     {sources.map((s) => (
-                      <span key={s.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 text-xs">
+                      <span key={s.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
                         <FileText className="w-3 h-3" /> {s.title}
                       </span>
                     ))}
                   </div>
                 )}
-                <div className={`whitespace-pre-wrap text-sm leading-relaxed text-slate-200 bg-[#0C0D13] border border-slate-800 rounded-xl p-5 ${asking ? "streaming-cursor" : ""}`} data-testid="bible-answer">
+                <div className={`whitespace-pre-wrap text-sm leading-relaxed text-slate-200 bg-[#0E0E11] border border-slate-800 rounded-xl p-5 ${asking ? "streaming-cursor" : ""}`} data-testid="bible-answer">
                   {answer || "Consultando a Bíblia..."}
                 </div>
               </div>
@@ -151,15 +151,15 @@ export default function Bible() {
                 <div className="space-y-2">
                   <Label className="text-slate-300">Título *</Label>
                   <Input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    className="bg-[#0C0D13] border-slate-700" placeholder="Guia de Tom de Voz — Cliente X" data-testid="bible-doc-title" />
+                    className="bg-[#0E0E11] border-slate-700" placeholder="Guia de Tom de Voz — Cliente X" data-testid="bible-doc-title" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-slate-300">Categoria</Label>
                   <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-                    <SelectTrigger className="bg-[#0C0D13] border-slate-700" data-testid="bible-doc-category">
+                    <SelectTrigger className="bg-[#0E0E11] border-slate-700" data-testid="bible-doc-category">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#11131A] border-slate-800 text-slate-200">
+                    <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200">
                       {CATEGORIES.map((c) => (
                         <SelectItem key={c} value={c}>{c}</SelectItem>
                       ))}
@@ -169,9 +169,9 @@ export default function Bible() {
                 <div className="space-y-2">
                   <Label className="text-slate-300">Conteúdo *</Label>
                   <Textarea required value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })}
-                    className="bg-[#0C0D13] border-slate-700 min-h-40" placeholder="Cole aqui o guia, persona, playbook ou guideline..." data-testid="bible-doc-content" />
+                    className="bg-[#0E0E11] border-slate-700 min-h-40" placeholder="Cole aqui o guia, persona, playbook ou guideline..." data-testid="bible-doc-content" />
                 </div>
-                <Button type="submit" disabled={saving} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white" data-testid="bible-doc-submit">
+                <Button type="submit" disabled={saving} className="w-full bg-red-600 hover:bg-red-500 text-white" data-testid="bible-doc-submit">
                   {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
                   Adicionar à Bíblia
                 </Button>
@@ -190,7 +190,7 @@ export default function Bible() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <h3 className="font-display font-semibold">{d.title}</h3>
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-violet-500/10 text-violet-300 border border-violet-500/20">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-rose-500/10 text-rose-300 border border-rose-500/20">
                             {d.category}
                           </span>
                         </div>

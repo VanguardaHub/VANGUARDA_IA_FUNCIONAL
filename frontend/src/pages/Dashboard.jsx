@@ -8,15 +8,15 @@ import { ptBR } from "date-fns/locale";
 const KIND_COLORS = {
   geracao: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   meta: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  cliente: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
-  biblia: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+  cliente: "bg-red-500/10 text-red-400 border-red-500/20",
+  biblia: "bg-rose-500/10 text-rose-400 border-rose-500/20",
   alerta: "bg-amber-500/10 text-amber-400 border-amber-500/20",
   peca: "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20",
   auth: "bg-slate-500/10 text-slate-400 border-slate-500/20",
   config: "bg-slate-500/10 text-slate-400 border-slate-500/20",
 };
 
-function KpiCard({ icon: Icon, label, value, sub, testid, accent = "text-indigo-400" }) {
+function KpiCard({ icon: Icon, label, value, sub, testid, accent = "text-red-400" }) {
   return (
     <div className="glass-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-700" data-testid={testid}>
       <div className="flex items-center justify-between mb-3">
@@ -39,7 +39,7 @@ export default function Dashboard() {
   if (!data)
     return (
       <div className="flex items-center justify-center h-64" data-testid="dashboard-loading">
-        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
 
@@ -54,7 +54,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard icon={DollarSign} label="Investimento" value={formatBRL(kpis.spend)} sub="em mídia paga" testid="kpi-spend" accent="text-emerald-400" />
-        <KpiCard icon={TrendingUp} label="ROAS" value={`${kpis.roas}x`} sub={`${formatBRL(kpis.revenue)} em receita`} testid="kpi-roas" accent="text-indigo-400" />
+        <KpiCard icon={TrendingUp} label="ROAS" value={`${kpis.roas}x`} sub={`${formatBRL(kpis.revenue)} em receita`} testid="kpi-roas" accent="text-red-400" />
         <KpiCard icon={MousePointerClick} label="CTR médio" value={`${kpis.ctr}%`} sub={`${formatNumber(kpis.clicks)} cliques`} testid="kpi-ctr" accent="text-amber-400" />
         <KpiCard icon={Target} label="Conversões" value={formatNumber(kpis.conversions)} sub={`${formatNumber(kpis.impressions)} impressões`} testid="kpi-conversions" accent="text-fuchsia-400" />
       </div>
@@ -75,8 +75,8 @@ export default function Dashboard() {
               <AreaChart data={series}>
                 <defs>
                   <linearGradient id="gradSpend" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6366F1" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="#6366F1" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#FF2D40" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="#FF2D40" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="date" tickFormatter={(d) => format(parseISO(d), "dd/MM", { locale: ptBR })}
@@ -84,11 +84,11 @@ export default function Dashboard() {
                 <YAxis tick={{ fill: "#64748B", fontSize: 11 }} axisLine={false} tickLine={false}
                   tickFormatter={(v) => `R$${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v}`} />
                 <Tooltip
-                  contentStyle={{ background: "#11131A", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, fontSize: 12 }}
+                  contentStyle={{ background: "#15151A", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, fontSize: 12 }}
                   labelFormatter={(d) => format(parseISO(d), "dd 'de' MMMM", { locale: ptBR })}
                   formatter={(v) => [formatBRL(v), "Investimento"]}
                 />
-                <Area type="monotone" dataKey="spend" stroke="#6366F1" strokeWidth={2} fill="url(#gradSpend)" />
+                <Area type="monotone" dataKey="spend" stroke="#FF2D40" strokeWidth={2} fill="url(#gradSpend)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -103,7 +103,7 @@ export default function Dashboard() {
                 <XAxis dataKey="date" tickFormatter={(d) => format(parseISO(d), "dd/MM")}
                   tick={{ fill: "#64748B", fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  contentStyle={{ background: "#11131A", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, fontSize: 12 }}
+                  contentStyle={{ background: "#15151A", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, fontSize: 12 }}
                   formatter={(v) => [v, "Conversões"]}
                 />
                 <Bar dataKey="conversions" fill="#10B981" radius={[4, 4, 0, 0]} />

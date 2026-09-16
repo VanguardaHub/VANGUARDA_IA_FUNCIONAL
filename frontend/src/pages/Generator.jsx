@@ -135,10 +135,10 @@ export default function Generator() {
             <div className="space-y-2">
               <Label className="text-slate-300">Cliente</Label>
               <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
-                <SelectTrigger className="bg-[#0C0D13] border-slate-700" data-testid="generator-client-select">
+                <SelectTrigger className="bg-[#0E0E11] border-slate-700" data-testid="generator-client-select">
                   <SelectValue placeholder="Selecione o cliente" />
                 </SelectTrigger>
-                <SelectContent className="bg-[#11131A] border-slate-800 text-slate-200">
+                <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200">
                   {clients.map((c) => (
                     <SelectItem key={c.id} value={c.id} data-testid={`generator-client-option-${c.id}`}>{c.name}</SelectItem>
                   ))}
@@ -157,7 +157,7 @@ export default function Generator() {
                     data-testid={`piece-type-${t.id}`}
                     className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs font-medium transition-all ${
                       form.piece_type === t.id
-                        ? "border-indigo-500/50 bg-indigo-500/10 text-indigo-300"
+                        ? "border-red-500/50 bg-red-500/10 text-red-300"
                         : "border-slate-800 bg-white/[0.02] text-slate-400 hover:border-slate-700"
                     }`}
                   >
@@ -178,7 +178,7 @@ export default function Generator() {
                     data-testid={`model-option-${m.id}`}
                     className={`w-full flex items-center justify-between p-3 rounded-lg border text-left transition-all ${
                       form.model === m.id
-                        ? "border-indigo-500/50 bg-indigo-500/10"
+                        ? "border-red-500/50 bg-red-500/10"
                         : "border-slate-800 bg-white/[0.02] hover:border-slate-700"
                     }`}
                   >
@@ -195,10 +195,10 @@ export default function Generator() {
             <div className="space-y-2">
               <Label className="text-slate-300">Tom de voz</Label>
               <Select value={form.tone} onValueChange={(v) => setForm({ ...form, tone: v })}>
-                <SelectTrigger className="bg-[#0C0D13] border-slate-700 capitalize" data-testid="generator-tone-select">
+                <SelectTrigger className="bg-[#0E0E11] border-slate-700 capitalize" data-testid="generator-tone-select">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#11131A] border-slate-800 text-slate-200">
+                <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200">
                   {TONES.map((t) => (
                     <SelectItem key={t} value={t} className="capitalize" data-testid={`tone-option-${t}`}>{t}</SelectItem>
                   ))}
@@ -211,7 +211,7 @@ export default function Generator() {
               <Textarea
                 value={form.prompt}
                 onChange={(e) => setForm({ ...form, prompt: e.target.value })}
-                className="bg-[#0C0D13] border-slate-700 min-h-28"
+                className="bg-[#0E0E11] border-slate-700 min-h-28"
                 placeholder="Ex.: Lançamento do novo blend de inverno do Café Aroma, foco em edição limitada e experiência sensorial..."
                 data-testid="generator-prompt-input"
               />
@@ -219,7 +219,7 @@ export default function Generator() {
 
             <div className="flex items-center justify-between py-1">
               <Label className="text-slate-300 flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-indigo-400" /> Gerar imagem com IA
+                <ImageIcon className="w-4 h-4 text-red-400" /> Gerar imagem com IA
               </Label>
               <Switch checked={withImage} onCheckedChange={setWithImage} data-testid="generator-image-toggle" />
             </div>
@@ -227,7 +227,7 @@ export default function Generator() {
             <Button
               onClick={generate}
               disabled={generating}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white h-11"
+              className="w-full bg-red-600 hover:bg-red-500 text-white h-11"
               data-testid="generate-piece-submit-button"
             >
               {generating ? (
@@ -263,8 +263,8 @@ export default function Generator() {
 
             {!content && !generating ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-16">
-                <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4">
-                  <Sparkles className="w-6 h-6 text-indigo-400" />
+                <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
+                  <Sparkles className="w-6 h-6 text-red-400" />
                 </div>
                 <p className="text-slate-400 text-sm max-w-xs">
                   Configure os parâmetros ao lado, descreva o briefing e clique em <strong>Gerar peça com IA</strong>.
@@ -279,11 +279,11 @@ export default function Generator() {
                 )}
                 {generatingImage && (
                   <div className="rounded-xl border border-slate-800 bg-white/[0.02] h-48 flex items-center justify-center">
-                    <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+                    <Loader2 className="w-6 h-6 animate-spin text-red-400" />
                   </div>
                 )}
                 <div
-                  className={`whitespace-pre-wrap text-sm leading-relaxed text-slate-200 bg-[#0C0D13] border border-slate-800 rounded-xl p-5 ${generating ? "streaming-cursor" : ""}`}
+                  className={`whitespace-pre-wrap text-sm leading-relaxed text-slate-200 bg-[#0E0E11] border border-slate-800 rounded-xl p-5 ${generating ? "streaming-cursor" : ""}`}
                   data-testid="generated-content"
                 >
                   {content || "Aguardando o modelo..."}

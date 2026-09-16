@@ -24,7 +24,7 @@ export default function ClientDetail() {
   if (!client)
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
 
@@ -47,7 +47,7 @@ export default function ClientDetail() {
             <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> {client.contact_email || "—"}</span>
           </div>
         </div>
-        <Button onClick={() => navigate(`/gerar?cliente=${client.id}`)} className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-full" data-testid="detail-generate-button">
+        <Button onClick={() => navigate(`/gerar?cliente=${client.id}`)} className="bg-red-600 hover:bg-red-500 text-white rounded-full" data-testid="detail-generate-button">
           <Sparkles className="w-4 h-4 mr-2" /> Gerar peça
         </Button>
       </div>
@@ -60,7 +60,7 @@ export default function ClientDetail() {
       )}
 
       <div>
-        <h2 className="font-display font-bold text-xl mb-4 flex items-center gap-2"><Megaphone className="w-5 h-5 text-indigo-400" /> Campanhas</h2>
+        <h2 className="font-display font-bold text-xl mb-4 flex items-center gap-2"><Megaphone className="w-5 h-5 text-red-400" /> Campanhas</h2>
         {client.campaigns.length === 0 ? (
           <div className="glass-card p-8 text-center text-slate-500 text-sm">Nenhuma campanha vinculada.</div>
         ) : (

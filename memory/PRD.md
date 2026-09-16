@@ -50,3 +50,7 @@ Multi-tenant por usuário; geração de conteúdo com IA contextualizada por mar
 1. Usuário revisar o app e validar geração de imagem no UI
 2. Decidir se quer claim do sandbox Stripe (link de onboarding compartilhado) para receber pagamentos reais
 3. Priorizar RAG vetorial ou Meta Ads real conforme feedback
+
+## 2026-06 — Paleta Vanguarda aplicada
+- Substituído tema indigo/violeta por vermelho Vanguarda (#FF2D40, primary hsl 355 100% 59%) e pretos neutros (#0B0B0D, #15151A) em index.css e todas as páginas.
+- Migração para GitHub: orientado a usar "Save to GitHub" (não é possível pelo agente).

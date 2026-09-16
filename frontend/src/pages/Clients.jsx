@@ -14,7 +14,7 @@ export default function Clients() {
   const [clients, setClients] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ name: "", segment: "", contact_name: "", contact_email: "", brand_color: "#6366F1", notes: "" });
+  const [form, setForm] = useState({ name: "", segment: "", contact_name: "", contact_email: "", brand_color: "#FF2D40", notes: "" });
 
   const load = () => api.get("/clients").then(({ data }) => setClients(data)).catch(() => {});
   useEffect(() => { load(); }, []);
@@ -26,7 +26,7 @@ export default function Clients() {
       await api.post("/clients", form);
       toast.success("Cliente cadastrado!");
       setOpen(false);
-      setForm({ name: "", segment: "", contact_name: "", contact_email: "", brand_color: "#6366F1", notes: "" });
+      setForm({ name: "", segment: "", contact_name: "", contact_email: "", brand_color: "#FF2D40", notes: "" });
       load();
     } catch (err) {
       toast.error(formatApiError(err));
@@ -54,11 +54,11 @@ export default function Clients() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-full" data-testid="new-client-button">
+            <Button className="bg-red-600 hover:bg-red-500 text-white rounded-full" data-testid="new-client-button">
               <Plus className="w-4 h-4 mr-2" /> Novo cliente
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-[#11131A] border-slate-800 text-slate-100 sm:max-w-lg" data-testid="new-client-dialog">
+          <DialogContent className="bg-[#15151A] border-slate-800 text-slate-100 sm:max-w-lg" data-testid="new-client-dialog">
             <DialogHeader>
               <DialogTitle className="font-display">Cadastrar cliente</DialogTitle>
             </DialogHeader>
@@ -67,35 +67,35 @@ export default function Clients() {
                 <div className="space-y-2 col-span-2">
                   <Label className="text-slate-300">Nome da marca *</Label>
                   <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="bg-[#0C0D13] border-slate-700" placeholder="Café Aroma" data-testid="client-name-input" />
+                    className="bg-[#0E0E11] border-slate-700" placeholder="Café Aroma" data-testid="client-name-input" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-slate-300">Segmento</Label>
                   <Input value={form.segment} onChange={(e) => setForm({ ...form, segment: e.target.value })}
-                    className="bg-[#0C0D13] border-slate-700" placeholder="Alimentação" data-testid="client-segment-input" />
+                    className="bg-[#0E0E11] border-slate-700" placeholder="Alimentação" data-testid="client-segment-input" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-slate-300">Cor da marca</Label>
                   <Input type="color" value={form.brand_color} onChange={(e) => setForm({ ...form, brand_color: e.target.value })}
-                    className="bg-[#0C0D13] border-slate-700 h-10 p-1" data-testid="client-color-input" />
+                    className="bg-[#0E0E11] border-slate-700 h-10 p-1" data-testid="client-color-input" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-slate-300">Contato</Label>
                   <Input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })}
-                    className="bg-[#0C0D13] border-slate-700" placeholder="Marina Lopes" data-testid="client-contact-input" />
+                    className="bg-[#0E0E11] border-slate-700" placeholder="Marina Lopes" data-testid="client-contact-input" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-slate-300">E-mail do contato</Label>
                   <Input type="email" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })}
-                    className="bg-[#0C0D13] border-slate-700" placeholder="contato@marca.com" data-testid="client-email-input" />
+                    className="bg-[#0E0E11] border-slate-700" placeholder="contato@marca.com" data-testid="client-email-input" />
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label className="text-slate-300">Observações da marca (a IA usa isso como contexto)</Label>
                   <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    className="bg-[#0C0D13] border-slate-700 min-h-24" placeholder="Tom de voz, público-alvo, restrições..." data-testid="client-notes-input" />
+                    className="bg-[#0E0E11] border-slate-700 min-h-24" placeholder="Tom de voz, público-alvo, restrições..." data-testid="client-notes-input" />
                 </div>
               </div>
-              <Button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white" data-testid="client-submit-button">
+              <Button type="submit" disabled={loading} className="w-full bg-red-600 hover:bg-red-500 text-white" data-testid="client-submit-button">
                 {loading ? "Salvando..." : "Cadastrar cliente"}
               </Button>
             </form>
@@ -134,7 +134,7 @@ export default function Clients() {
                   Detalhes <ArrowRight className="w-3.5 h-3.5 ml-1" />
                 </Button>
                 <Button size="sm" onClick={() => navigate(`/gerar?cliente=${c.id}`)}
-                  className="bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30" data-testid={`client-generate-${c.id}`}>
+                  className="bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30" data-testid={`client-generate-${c.id}`}>
                   <Sparkles className="w-3.5 h-3.5 mr-1" /> Gerar peça
                 </Button>
               </div>

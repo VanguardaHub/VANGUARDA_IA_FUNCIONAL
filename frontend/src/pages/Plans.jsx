@@ -51,7 +51,7 @@ export default function Plans() {
       <div className="text-center">
         <h1 className="font-display font-extrabold tracking-tight text-3xl">Planos & Assinatura</h1>
         <p className="text-sm text-slate-400 mt-2">
-          Plano atual: <span className="text-indigo-400 font-semibold" data-testid="current-plan">{PLAN_LABELS[user?.plan] || user?.plan}</span>
+          Plano atual: <span className="text-red-400 font-semibold" data-testid="current-plan">{PLAN_LABELS[user?.plan] || user?.plan}</span>
         </p>
       </div>
 
@@ -60,7 +60,7 @@ export default function Plans() {
         <button
           onClick={() => setYearly(!yearly)}
           data-testid="billing-toggle-button"
-          className={`w-12 h-6 rounded-full transition-colors relative ${yearly ? "bg-indigo-600" : "bg-slate-700"}`}
+          className={`w-12 h-6 rounded-full transition-colors relative ${yearly ? "bg-red-600" : "bg-slate-700"}`}
         >
           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${yearly ? "translate-x-7" : "translate-x-1"}`} />
         </button>
@@ -77,7 +77,7 @@ export default function Plans() {
           return (
             <div key={p.id} className={`glass-card p-6 relative flex flex-col ${p.highlight ? "glow-border" : ""}`} data-testid={`plan-card-${p.id}`}>
               {p.highlight && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-indigo-600 text-xs font-semibold flex items-center gap-1">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-red-600 text-xs font-semibold flex items-center gap-1">
                   <Crown className="w-3 h-3" /> MAIS POPULAR
                 </span>
               )}
@@ -101,7 +101,7 @@ export default function Plans() {
                   isCurrent
                     ? "bg-white/5 text-slate-500 border border-slate-700 cursor-default"
                     : p.highlight
-                      ? "bg-indigo-600 hover:bg-indigo-500 text-white"
+                      ? "bg-red-600 hover:bg-red-500 text-white"
                       : "bg-white/5 hover:bg-white/10 text-slate-200 border border-slate-700"
                 }`}
                 data-testid={`plan-checkout-${p.id}`}

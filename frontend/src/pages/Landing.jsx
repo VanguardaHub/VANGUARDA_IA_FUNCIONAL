@@ -21,20 +21,20 @@ const PLANS = [
 export default function Landing() {
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen bg-[#090A0F] text-slate-100 noise-overlay" data-testid="landing-page">
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-[#090A0F]/80 border-b border-slate-800/60">
+    <div className="min-h-screen bg-[#0B0B0D] text-slate-100 noise-overlay" data-testid="landing-page">
+      <header className="sticky top-0 z-40 backdrop-blur-xl bg-[#0B0B0D]/80 border-b border-slate-800/60">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center">
               <Zap className="w-4 h-4 text-white" />
             </div>
-            <span className="font-display font-extrabold text-lg tracking-tight">Vanguarda<span className="text-indigo-400">.IA</span></span>
+            <span className="font-display font-extrabold text-lg tracking-tight">Vanguarda<span className="text-red-400">.IA</span></span>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="ghost" onClick={() => navigate("/login")} className="text-slate-300 hover:text-white" data-testid="landing-login-button">
               Entrar
             </Button>
-            <Button onClick={() => navigate("/register")} className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-full px-5" data-testid="landing-signup-button">
+            <Button onClick={() => navigate("/register")} className="bg-red-600 hover:bg-red-500 text-white rounded-full px-5" data-testid="landing-signup-button">
               Começar grátis
             </Button>
           </div>
@@ -42,20 +42,20 @@ export default function Landing() {
       </header>
 
       <section className="relative max-w-6xl mx-auto px-6 pt-20 pb-24 lg:pt-28">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-indigo-600/20 blur-[140px] rounded-full pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-red-600/20 blur-[140px] rounded-full pointer-events-none" />
         <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="relative">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-medium mb-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-red-500/30 bg-red-500/10 text-red-300 text-xs font-medium mb-8">
             <Sparkles className="w-3.5 h-3.5" /> Plataforma de IA para agências de marketing
           </div>
           <h1 className="font-display font-extrabold tracking-tight text-4xl sm:text-5xl lg:text-6xl max-w-3xl leading-[1.05]">
-            Sua agência no modo <span className="bg-gradient-to-r from-indigo-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">vanguarda</span>.
+            Sua agência no modo <span className="bg-gradient-to-r from-red-400 via-rose-400 to-fuchsia-400 bg-clip-text text-transparent">vanguarda</span>.
           </h1>
           <p className="mt-6 text-base md:text-lg text-slate-400 max-w-2xl leading-relaxed">
             Gere peças publicitárias com IA, consulte a Bíblia da marca e acompanhe indicadores de campanhas —
             tudo num único cockpit desenhado para operadores de agência.
           </p>
           <div className="mt-10 flex flex-wrap gap-4">
-            <Button onClick={() => navigate("/register")} size="lg" className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-full px-8 h-12 text-base" data-testid="hero-cta-button">
+            <Button onClick={() => navigate("/register")} size="lg" className="bg-red-600 hover:bg-red-500 text-white rounded-full px-8 h-12 text-base" data-testid="hero-cta-button">
               Criar conta grátis <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
             <Button onClick={() => navigate("/login")} size="lg" variant="outline" className="rounded-full px-8 h-12 text-base border-slate-700 text-slate-300 hover:bg-white/5" data-testid="hero-demo-button">
@@ -90,8 +90,8 @@ export default function Landing() {
               className="glass-card p-5 sm:p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-700"
               data-testid={`feature-card-${i}`}
             >
-              <div className="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4">
-                <f.icon className="w-5 h-5 text-indigo-400" />
+              <div className="w-10 h-10 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
+                <f.icon className="w-5 h-5 text-red-400" />
               </div>
               <h3 className="font-display font-semibold text-lg mb-2">{f.title}</h3>
               <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
@@ -107,7 +107,7 @@ export default function Landing() {
           {PLANS.map((p, i) => (
             <div key={p.name} className={`glass-card p-6 relative ${p.highlight ? "glow-border" : ""}`} data-testid={`landing-plan-${i}`}>
               {p.highlight && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-indigo-600 text-xs font-semibold">MAIS POPULAR</span>
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-red-600 text-xs font-semibold">MAIS POPULAR</span>
               )}
               <h3 className="font-display font-semibold text-lg">{p.name}</h3>
               <div className="mt-4 flex items-baseline gap-1">
@@ -123,7 +123,7 @@ export default function Landing() {
               </ul>
               <Button
                 onClick={() => navigate("/register")}
-                className={`w-full mt-8 rounded-full ${p.highlight ? "bg-indigo-600 hover:bg-indigo-500 text-white" : "bg-white/5 hover:bg-white/10 text-slate-200 border border-slate-700"}`}
+                className={`w-full mt-8 rounded-full ${p.highlight ? "bg-red-600 hover:bg-red-500 text-white" : "bg-white/5 hover:bg-white/10 text-slate-200 border border-slate-700"}`}
                 data-testid={`landing-plan-cta-${i}`}
               >
                 Assinar {p.name}
@@ -136,7 +136,7 @@ export default function Landing() {
       <footer className="border-t border-slate-800/60 py-10">
         <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-indigo-400" />
+            <Zap className="w-4 h-4 text-red-400" />
             <span className="font-display font-bold">Vanguarda.IA</span>
           </div>
           <p className="text-xs text-slate-500">© 2026 Vanguarda.IA — Inteligência para agências que lideram.</p>

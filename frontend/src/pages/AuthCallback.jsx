@@ -27,8 +27,8 @@ export default function AuthCallback() {
   }, [navigate, setUser]);
 
   return (
-    <div className="min-h-screen bg-[#090A0F] flex flex-col items-center justify-center gap-4" data-testid="auth-callback">
-      <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen bg-[#0B0B0D] flex flex-col items-center justify-center gap-4" data-testid="auth-callback">
+      <div className="w-10 h-10 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
       <p className="text-slate-400 text-sm">Autenticando com Google...</p>
     </div>
   );

@@ -33,15 +33,15 @@ export default function ForgotPassword() {
             <Label htmlFor="email" className="text-slate-300">E-mail</Label>
             <Input id="email" type="email" required value={email} data-testid="forgot-email-input"
               onChange={(e) => setEmail(e.target.value)}
-              className="bg-[#0C0D13] border-slate-700 h-11" placeholder="voce@agencia.com.br" />
+              className="bg-[#0E0E11] border-slate-700 h-11" placeholder="voce@agencia.com.br" />
           </div>
-          <Button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white h-11" data-testid="forgot-submit-button">
+          <Button type="submit" disabled={loading} className="w-full bg-red-600 hover:bg-red-500 text-white h-11" data-testid="forgot-submit-button">
             {loading ? "Enviando..." : "Enviar link de redefinição"}
           </Button>
         </form>
       )}
       <p className="text-sm text-slate-400 text-center mt-6">
-        <Link to="/login" className="text-indigo-400 hover:text-indigo-300 font-medium" data-testid="back-to-login-link">Voltar para o login</Link>
+        <Link to="/login" className="text-red-400 hover:text-red-300 font-medium" data-testid="back-to-login-link">Voltar para o login</Link>
       </p>
     </AuthShell>
   );

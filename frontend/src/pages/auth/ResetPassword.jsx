@@ -43,15 +43,15 @@ export default function ResetPassword() {
             <Label htmlFor="password" className="text-slate-300">Nova senha</Label>
             <Input id="password" type="password" required minLength={6} value={password} data-testid="reset-password-input"
               onChange={(e) => setPassword(e.target.value)}
-              className="bg-[#0C0D13] border-slate-700 h-11" placeholder="Mínimo 6 caracteres" />
+              className="bg-[#0E0E11] border-slate-700 h-11" placeholder="Mínimo 6 caracteres" />
           </div>
-          <Button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white h-11" data-testid="reset-submit-button">
+          <Button type="submit" disabled={loading} className="w-full bg-red-600 hover:bg-red-500 text-white h-11" data-testid="reset-submit-button">
             {loading ? "Salvando..." : "Redefinir senha"}
           </Button>
         </form>
       )}
       <p className="text-sm text-slate-400 text-center mt-6">
-        <Link to="/login" className="text-indigo-400 hover:text-indigo-300 font-medium" data-testid="reset-back-login-link">Voltar para o login</Link>
+        <Link to="/login" className="text-red-400 hover:text-red-300 font-medium" data-testid="reset-back-login-link">Voltar para o login</Link>
       </p>
     </AuthShell>
   );

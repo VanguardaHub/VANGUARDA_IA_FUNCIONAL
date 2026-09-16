@@ -1,0 +1,7 @@
+# Dependências apenas de desenvolvimento e teste.
+# Não são instaladas em produção nem entram no bundle da Vercel.
+-r requirements.txt
+
+pytest==9.1.1
+pytest-xdist==3.8.0
+requests==2.34.2

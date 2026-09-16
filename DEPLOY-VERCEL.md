@@ -111,7 +111,7 @@ Há uma dependência circular de URLs: o backend precisa saber a URL do frontend
 |---|---|
 | **Deployments de preview** | O CORS do backend libera apenas `FRONTEND_URL` e `localhost:3000`. URLs de preview da Vercel são aleatórias e serão **bloqueadas**. Só a URL de produção funciona sem ajuste no código. |
 | **Geração de imagem** | O limite de corpo de resposta da Vercel é **4,5 MB**. A imagem volta em base64 (≈ +33% sobre o tamanho bruto). Imagens grandes podem estourar e retornar `FUNCTION_PAYLOAD_TOO_LARGE`. |
-| **Tamanho do bundle** | O limite Python é 500 MB. Ver seção 6 — o `requirements.txt` atual é um risco real. |
+| **Tamanho do bundle** | Resolvido. O limite Python é 500 MB e as dependências foram reduzidas a 124 MB — ver seção 6. |
 | **Login com Google** | Ainda aponta para `auth.emergentagent.com` (`frontend/src/pages/auth/Login.jsx:15`). Vai falhar. O login por e-mail/senha funciona normalmente. |
 | **Reset de senha por e-mail** | Depende do proxy da Emergent. Fica inativo. |
 | **Seeding** | Roda a cada cold start, mas é idempotente (verifica existência antes de inserir). Não duplica dados. |
@@ -119,43 +119,48 @@ Há uma dependência circular de URLs: o backend precisa saber a URL do frontend
 
 ---
 
-## 6. Recomendação forte: enxugar o `requirements.txt`
+## 6. Dependências do backend (já enxugadas)
 
-O arquivo atual tem **125 pacotes** — é um `pip freeze` completo da imagem da
-Emergent. A superfície real de imports do backend é de **12 pacotes**.
+O `requirements.txt` original tinha **125 pacotes** — um `pip freeze` completo
+da imagem da Emergent. A superfície real de imports do backend é de 12 pacotes.
 
-Carregam junto, sem serem usados: `pandas`, `numpy`, `boto3`, `botocore`,
+A lista foi reduzida a **15 entradas explícitas**, derivadas dos imports de
+`server.py`, `payments.py` e `emergentintegrations/`. As ferramentas de teste
+passaram para `requirements-dev.txt`, que não entra no bundle da função.
+
+Removidos por não serem usados: `pandas`, `numpy`, `boto3`, `botocore`,
 `google-generativeai`, `google-genai`, `grpcio`, `huggingface_hub`,
-`tokenizers`, `tiktoken`, além de ferramentas de desenvolvimento (`black`,
-`mypy`, `flake8`, `isort`, `pytest`).
+`tokenizers`, `tiktoken`, `litellm`, além de `black`, `mypy`, `flake8`,
+`isort` e `pytest`.
 
-**Dois efeitos diretos na Vercel:**
+Duas dependências foram mantidas por motivo específico, apesar de não
+aparecerem em nenhum `import`:
 
-1. O bundle se aproxima perigosamente do teto de 500 MB.
-2. O *cold start* fica muito mais lento — cada import pesa no tempo da primeira
-   resposta.
+- **`dnspython`** — obrigatório para URIs `mongodb+srv://`. Sem ele a conexão
+  com o MongoDB Atlas falha.
+- **`email-validator`** — exigido por `pydantic.EmailStr`, usado nos modelos
+  de autenticação.
 
-O conjunto realmente necessário:
+### Verificação executada
 
+A lista foi validada em ambiente virtual limpo, instalado do zero:
+
+| Métrica | Antes | Depois |
+|---|---|---|
+| Entradas no `requirements.txt` | 125 | 15 |
+| Pacotes instalados (com transitivos) | — | 36 |
+| Peso de `site-packages` | — | **124 MB** (teto da Vercel: 500 MB) |
+| Suíte de regressão | 25/28 | **25/28** (idêntica) |
+
+As 3 falhas remanescentes são as mesmas de antes e dependem apenas de
+credenciais: geração de peça e consulta à Bíblia exigem saldo nas contas de
+IA; a listagem de planos exige `STRIPE_SECRET_KEY`.
+
+### Instalação local para desenvolvimento
+
+```bash
+pip install -r backend/requirements-dev.txt   # inclui o requirements.txt
 ```
-fastapi==0.110.1
-uvicorn==0.25.0
-motor==3.3.1
-pymongo==4.6.3
-pydantic==2.13.5
-email-validator==2.3.0
-python-dotenv==1.2.3
-python-multipart==0.0.32
-bcrypt==4.1.3
-PyJWT==2.14.0
-httpx==0.28.1
-stripe==14.4.1
-anthropic==1.6.0
-openai==3.14.1
-```
-
-Não apliquei essa substituição — é uma alteração grande num arquivo original e
-prefiro que seja sua decisão. Diga e eu troco.
 
 ---
 

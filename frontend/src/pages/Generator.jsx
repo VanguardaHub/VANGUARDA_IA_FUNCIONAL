@@ -273,8 +273,8 @@ export default function Generator() {
             ) : (
               <div className="flex-1 space-y-5">
                 {image && (
-                  <div className="rounded-xl overflow-hidden border border-slate-800" data-testid="generated-image-preview">
-                    <img src={image} alt="Criativo gerado por IA" className="w-full max-h-80 object-cover" />
+                  <div className="rounded-xl overflow-hidden border border-slate-800 bg-[#0E0E11] flex items-center justify-center" data-testid="generated-image-preview">
+                    <img src={image} alt="Criativo gerado por IA" className="w-full max-h-[75vh] object-contain" />
                   </div>
                 )}
                 {generatingImage && (

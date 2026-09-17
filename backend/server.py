@@ -239,6 +239,9 @@ class PieceUpdateRequest(BaseModel):
     content: Optional[str] = None
     status: Optional[str] = None
 
+class PublishRequest(BaseModel):
+    scheduled_at: Optional[str] = None
+
 class ImageGenRequest(BaseModel):
     prompt: str
 
@@ -682,6 +685,32 @@ async def update_piece(piece_id: str, req: PieceUpdateRequest, user: dict = Depe
         await log_activity(user["user_id"], "peca", f"Peça aprovada: {piece['title']}")
     return piece
 
+def _parse_schedule(raw: Optional[str]) -> Optional[datetime]:
+    if not raw:
+        return None
+    try:
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Data de agendamento inválida")
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+@api_router.post("/pieces/{piece_id}/publish")
+async def publish_piece(piece_id: str, req: PublishRequest, user: dict = Depends(get_current_user)):
+    piece = await db.pieces.find_one({"id": piece_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not piece:
+        raise HTTPException(status_code=404, detail="Peça não encontrada")
+    now = datetime.now(timezone.utc)
+    scheduled = _parse_schedule(req.scheduled_at)
+    if scheduled and scheduled > now:
+        await db.pieces.update_one({"id": piece_id}, {"$set": {"status": "agendada", "scheduled_at": scheduled.isoformat(), "published_at": None}})
+        await log_activity(user["user_id"], "publicacao", f"Peça agendada: {piece['title']} para {scheduled.strftime('%d/%m/%Y %H:%M')}")
+    else:
+        await db.pieces.update_one({"id": piece_id}, {"$set": {"status": "publicada", "published_at": now.isoformat(), "scheduled_at": None}})
+        await log_activity(user["user_id"], "publicacao", f"Peça publicada: {piece['title']}")
+    return await db.pieces.find_one({"id": piece_id}, {"_id": 0})
+
 @api_router.delete("/pieces/{piece_id}")
 async def delete_piece(piece_id: str, user: dict = Depends(get_current_user)):
     result = await db.pieces.delete_one({"id": piece_id, "user_id": user["user_id"]})
@@ -832,6 +861,21 @@ async def toggle_campaign_status(campaign_id: str, request: Request, user: dict 
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Campanha não encontrada")
     return {"message": "Status atualizado", "status": status}
+
+@api_router.post("/campaigns/{campaign_id}/publish")
+async def publish_campaign(campaign_id: str, req: PublishRequest, user: dict = Depends(get_current_user)):
+    c = await db.campaigns.find_one({"id": campaign_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not c:
+        raise HTTPException(status_code=404, detail="Campanha não encontrada")
+    now = datetime.now(timezone.utc)
+    scheduled = _parse_schedule(req.scheduled_at)
+    if scheduled and scheduled > now:
+        await db.campaigns.update_one({"id": campaign_id}, {"$set": {"status": "agendada", "scheduled_at": scheduled.isoformat(), "published_at": None}})
+        await log_activity(user["user_id"], "publicacao", f"Campanha agendada: {c['name']} para {scheduled.strftime('%d/%m/%Y %H:%M')}")
+    else:
+        await db.campaigns.update_one({"id": campaign_id}, {"$set": {"status": "ativa", "published_at": now.isoformat(), "scheduled_at": None}})
+        await log_activity(user["user_id"], "publicacao", f"Campanha publicada: {c['name']}")
+    return await db.campaigns.find_one({"id": campaign_id}, {"_id": 0})
 
 # ---------------- Logs & alerts ----------------
 

@@ -91,11 +91,8 @@ export default function Landing() {
             <a href="#planos" className="hover:text-white transition-colors" data-testid="nav-planos">Planos</a>
           </nav>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" onClick={() => navigate("/login")} className="text-slate-300 hover:text-white" data-testid="landing-login-button">
+            <Button onClick={() => navigate("/login")} className="bg-red-600 hover:bg-red-500 text-white rounded-full px-6" data-testid="landing-login-button">
               Entrar
-            </Button>
-            <Button onClick={() => navigate("/register")} className="bg-red-600 hover:bg-red-500 text-white rounded-full px-5" data-testid="landing-signup-button">
-              Começar grátis
             </Button>
           </div>
         </div>
@@ -117,14 +114,11 @@ export default function Landing() {
               tudo num só lugar. Do briefing ao criativo no ar em minutos, não em dias.
             </p>
             <div className="mt-9 flex flex-wrap gap-4">
-              <Button onClick={() => navigate("/register")} size="lg" className="bg-red-600 hover:bg-red-500 text-white rounded-full px-8 h-12 text-base" data-testid="hero-cta-button">
-                Criar conta grátis <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-              <Button onClick={() => navigate("/login")} size="lg" variant="outline" className="rounded-full px-8 h-12 text-base border-slate-700 text-slate-300 hover:bg-white/5" data-testid="hero-demo-button">
-                Já tenho conta
+              <Button onClick={() => navigate("/login")} size="lg" className="bg-red-600 hover:bg-red-500 text-white rounded-full px-8 h-12 text-base" data-testid="hero-cta-button">
+                Acessar plataforma <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
-            <p className="mt-4 text-xs text-slate-500">Sem cartão de crédito · Setup em 2 minutos · Cancele quando quiser</p>
+            <p className="mt-4 text-xs text-slate-500">Plataforma exclusiva para clientes Vanguarda.IA</p>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.15 }}>
@@ -261,7 +255,7 @@ export default function Landing() {
                   </li>
                 ))}
               </ul>
-              <Button onClick={() => navigate("/register")}
+              <Button onClick={() => navigate("/login")}
                 className={`w-full mt-8 rounded-full ${p.highlight ? "bg-red-600 hover:bg-red-500 text-white" : "bg-white/5 hover:bg-white/10 text-slate-200 border border-slate-700"}`}
                 data-testid={`landing-plan-cta-${i}`}>
                 Assinar {p.name}
@@ -276,12 +270,12 @@ export default function Landing() {
         <div className="glass-card glow-border p-10 lg:p-16 text-center relative overflow-hidden">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[240px] bg-red-600/20 blur-[130px] rounded-full pointer-events-none" />
           <div className="relative">
-            <div className="inline-flex items-center gap-2 text-xs text-slate-400 mb-5"><Clock className="w-3.5 h-3.5 text-red-400" /> Leva 2 minutos para começar</div>
+            <div className="inline-flex items-center gap-2 text-xs text-slate-400 mb-5"><Clock className="w-3.5 h-3.5 text-red-400" /> Acesso exclusivo para clientes</div>
             <h2 className="font-display font-extrabold tracking-tight text-3xl lg:text-5xl leading-tight max-w-2xl mx-auto">
               Coloque sua agência no <span className="text-red-400">modo vanguarda</span> hoje.
             </h2>
-            <Button onClick={() => navigate("/register")} size="lg" className="mt-8 bg-red-600 hover:bg-red-500 text-white rounded-full px-10 h-12 text-base" data-testid="final-cta-button">
-              Criar conta grátis <ArrowRight className="w-4 h-4 ml-2" />
+            <Button onClick={() => navigate("/login")} size="lg" className="mt-8 bg-red-600 hover:bg-red-500 text-white rounded-full px-10 h-12 text-base" data-testid="final-cta-button">
+              Acessar plataforma <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
         </div>
@@ -303,8 +297,7 @@ export default function Landing() {
           <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
             <p className="text-sm text-slate-300 hidden sm:block">Pronto para operar no modo vanguarda?</p>
             <div className="flex items-center gap-3 w-full sm:w-auto">
-              <Button onClick={() => navigate("/login")} variant="ghost" className="text-slate-300 hover:text-white flex-1 sm:flex-none" data-testid="sticky-login-button">Entrar</Button>
-              <Button onClick={() => navigate("/register")} className="bg-red-600 hover:bg-red-500 text-white rounded-full px-6 flex-1 sm:flex-none" data-testid="sticky-cta-button">Começar grátis</Button>
+              <Button onClick={() => navigate("/login")} className="bg-red-600 hover:bg-red-500 text-white rounded-full px-6 w-full sm:w-auto" data-testid="sticky-cta-button">Acessar plataforma</Button>
             </div>
           </div>
         </div>

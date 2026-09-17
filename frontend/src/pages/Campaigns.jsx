@@ -5,15 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, RefreshCw, Loader2, Megaphone, LayoutGrid, Table as TableIcon } from "lucide-react";
+import { Plus, RefreshCw, Loader2, Megaphone, LayoutGrid, Table as TableIcon, Send, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_STYLES = {
   ativa: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   pausada: "bg-amber-500/10 text-amber-400 border-amber-500/20",
   em_analise: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  agendada: "bg-violet-500/10 text-violet-300 border-violet-500/20",
 };
-const STATUS_LABELS = { ativa: "Ativa", pausada: "Pausada", em_analise: "Em análise" };
+const STATUS_LABELS = { ativa: "Ativa", pausada: "Pausada", em_analise: "Em análise", agendada: "Agendada" };
 
 function RoasDial({ roas }) {
   const pct = Math.min(roas / 6, 1);
@@ -40,6 +41,8 @@ export default function Campaigns() {
   const [open, setOpen] = useState(false);
   const [syncing, setSyncing] = useState(null);
   const [form, setForm] = useState({ client_id: "", name: "", objective: "Conversões", budget_daily: 100 });
+  const [scheduleTarget, setScheduleTarget] = useState(null);
+  const [scheduleAt, setScheduleAt] = useState("");
 
   const load = () => {
     api.get("/campaigns").then(({ data }) => setCampaigns(data)).catch(() => {});
@@ -78,6 +81,28 @@ export default function Campaigns() {
     try {
       await api.post(`/campaigns/${id}/status`, { status: next });
       toast.success(`Campanha ${next === "ativa" ? "ativada" : "pausada"}`);
+      load();
+    } catch (err) {
+      toast.error(formatApiError(err));
+    }
+  };
+
+  const publishNow = async (id) => {
+    try {
+      await api.post(`/campaigns/${id}/publish`, {});
+      toast.success("Campanha publicada!");
+      load();
+    } catch (err) {
+      toast.error(formatApiError(err));
+    }
+  };
+
+  const doSchedule = async () => {
+    if (!scheduleAt) { toast.error("Escolha data e hora"); return; }
+    try {
+      await api.post(`/campaigns/${scheduleTarget}/publish`, { scheduled_at: new Date(scheduleAt).toISOString() });
+      toast.success("Campanha agendada!");
+      setScheduleTarget(null); setScheduleAt("");
       load();
     } catch (err) {
       toast.error(formatApiError(err));
@@ -193,6 +218,16 @@ export default function Campaigns() {
                 </div>
               </div>
               <div className="flex gap-2 mt-4">
+                <Button size="sm" onClick={() => publishNow(c.id)}
+                  className="flex-1 bg-red-600 hover:bg-red-500 text-white" data-testid={`campaign-publish-${c.id}`}>
+                  <Send className="w-3.5 h-3.5 mr-1.5" /> Publicar
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => { setScheduleTarget(c.id); setScheduleAt(""); }}
+                  className="border-slate-700 bg-white/5 hover:bg-white/10 text-slate-200" data-testid={`campaign-schedule-${c.id}`}>
+                  <CalendarClock className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+              <div className="flex gap-2 mt-2">
                 <Button size="sm" variant="outline" onClick={() => sync(c.id)} disabled={syncing === c.id}
                   className="flex-1 border-slate-700 bg-white/5 hover:bg-white/10 text-slate-200" data-testid={`campaign-sync-${c.id}`}>
                   {syncing === c.id ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
@@ -244,6 +279,24 @@ export default function Campaigns() {
           </table>
         </div>
       )}
+
+      <Dialog open={!!scheduleTarget} onOpenChange={(o) => { if (!o) { setScheduleTarget(null); setScheduleAt(""); } }}>
+        <DialogContent className="bg-[#15151A] border-slate-800 text-slate-100" data-testid="campaign-schedule-dialog">
+          <DialogHeader>
+            <DialogTitle className="font-display">Agendar publicação</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-slate-300">Data e hora</Label>
+              <Input type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)}
+                className="bg-[#0E0E11] border-slate-700" data-testid="campaign-schedule-input" />
+            </div>
+            <Button onClick={doSchedule} className="w-full bg-red-600 hover:bg-red-500 text-white" data-testid="campaign-schedule-confirm">
+              <CalendarClock className="w-4 h-4 mr-2" /> Agendar campanha
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

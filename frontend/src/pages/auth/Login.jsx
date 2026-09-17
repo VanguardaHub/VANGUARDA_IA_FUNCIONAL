@@ -125,10 +125,6 @@ export default function Login() {
         <div className="flex-1 h-px bg-slate-800" />
       </div>
       <GoogleButton testid="google-login-button" />
-      <p className="text-sm text-slate-400 text-center mt-6">
-        Não tem conta?{" "}
-        <Link to="/register" className="text-red-400 hover:text-red-300 font-medium" data-testid="go-to-register-link">Criar conta</Link>
-      </p>
     </AuthShell>
   );
 }

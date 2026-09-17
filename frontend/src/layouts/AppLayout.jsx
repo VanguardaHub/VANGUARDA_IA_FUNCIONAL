@@ -30,7 +30,7 @@ export default function AppLayout() {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/login");
+    navigate("/");
   };
 
   return (

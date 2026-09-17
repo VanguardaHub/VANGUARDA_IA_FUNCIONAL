@@ -43,6 +43,7 @@ export default function Campaigns() {
   const [form, setForm] = useState({ client_id: "", name: "", objective: "Conversões", budget_daily: 100 });
   const [scheduleTarget, setScheduleTarget] = useState(null);
   const [scheduleAt, setScheduleAt] = useState("");
+  const minDateTime = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
   const load = () => {
     api.get("/campaigns").then(({ data }) => setCampaigns(data)).catch(() => {});
@@ -288,7 +289,7 @@ export default function Campaigns() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label className="text-slate-300">Data e hora</Label>
-              <Input type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)}
+              <Input type="datetime-local" min={minDateTime} value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)}
                 className="bg-[#0E0E11] border-slate-700" data-testid="campaign-schedule-input" />
             </div>
             <Button onClick={doSchedule} className="w-full bg-red-600 hover:bg-red-500 text-white" data-testid="campaign-schedule-confirm">

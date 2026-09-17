@@ -7,17 +7,25 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Save, Loader2, Cpu, Building2, KeyRound, Users } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Save, Loader2, Cpu, Building2, KeyRound, Users, UserPlus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 
 const TONES = ["profissional", "persuasivo", "descontraído", "luxuoso", "motivacional", "urgente"];
+const ROLES = [{ id: "member", label: "Membro" }, { id: "admin", label: "Admin" }];
+const PLANS = [{ id: "trial", label: "Trial" }, { id: "starter", label: "Starter" }, { id: "pro", label: "Pro" }, { id: "agency", label: "Enterprise" }];
+const EMPTY_USER = { name: "", email: "", password: "", role: "member", plan: "trial" };
 
 export default function Settings() {
   const { user } = useAuth();
   const [settings, setSettings] = useState(null);
   const [users, setUsers] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [userDialogOpen, setUserDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [userForm, setUserForm] = useState(EMPTY_USER);
+  const [savingUser, setSavingUser] = useState(false);
 
   const load = () => {
     api.get("/settings").then(({ data }) => setSettings(data)).catch(() => {});
@@ -41,6 +49,51 @@ export default function Settings() {
       toast.error(formatApiError(err));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openCreate = () => {
+    setEditingUser(null);
+    setUserForm(EMPTY_USER);
+    setUserDialogOpen(true);
+  };
+
+  const openEdit = (u) => {
+    setEditingUser(u);
+    setUserForm({ name: u.name, email: u.email, password: "", role: u.role, plan: u.plan });
+    setUserDialogOpen(true);
+  };
+
+  const submitUser = async (e) => {
+    e.preventDefault();
+    setSavingUser(true);
+    try {
+      if (editingUser) {
+        const payload = { name: userForm.name, role: userForm.role, plan: userForm.plan };
+        if (userForm.password) payload.password = userForm.password;
+        await api.put(`/admin/users/${editingUser.user_id}`, payload);
+        toast.success("Usuário atualizado");
+      } else {
+        await api.post("/admin/users", userForm);
+        toast.success("Usuário criado");
+      }
+      setUserDialogOpen(false);
+      load();
+    } catch (err) {
+      toast.error(formatApiError(err));
+    } finally {
+      setSavingUser(false);
+    }
+  };
+
+  const deleteUser = async (u) => {
+    if (!window.confirm(`Remover a conta de ${u.name} (${u.email})? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await api.delete(`/admin/users/${u.user_id}`);
+      toast.success("Usuário removido");
+      load();
+    } catch (err) {
+      toast.error(formatApiError(err));
     }
   };
 
@@ -166,39 +219,113 @@ export default function Settings() {
 
         {user?.role === "admin" && (
           <TabsContent value="team">
-            <div className="glass-card overflow-hidden max-w-3xl" data-testid="users-table">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs text-slate-500 uppercase tracking-wider">
-                    <th className="p-4">Usuário</th>
-                    <th className="p-4">E-mail</th>
-                    <th className="p-4">Papel</th>
-                    <th className="p-4">Plano</th>
-                    <th className="p-4">Desde</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((u) => (
-                    <tr key={u.user_id} className="border-b border-slate-800/50 hover:bg-white/[0.02]" data-testid={`user-row-${u.user_id}`}>
-                      <td className="p-4 font-medium">{u.name}</td>
-                      <td className="p-4 text-slate-400">{u.email}</td>
-                      <td className="p-4">
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
-                          u.role === "admin" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-slate-500/10 text-slate-400 border-slate-500/20"
-                        }`}>
-                          {u.role === "admin" ? "Admin" : "Membro"}
-                        </span>
-                      </td>
-                      <td className="p-4 font-mono text-xs">{u.plan}</td>
-                      <td className="p-4 text-slate-500 text-xs">{u.created_at ? format(parseISO(u.created_at), "dd/MM/yyyy") : "—"}</td>
+            <div className="space-y-4 max-w-3xl">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-slate-400">Gerencie as contas de acesso à plataforma. O cadastro público está desativado.</p>
+                <Button onClick={openCreate} className="bg-red-600 hover:bg-red-500 text-white rounded-full" data-testid="new-user-button">
+                  <UserPlus className="w-4 h-4 mr-2" /> Novo usuário
+                </Button>
+              </div>
+              <div className="glass-card overflow-hidden" data-testid="users-table">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-left text-xs text-slate-500 uppercase tracking-wider">
+                      <th className="p-4">Usuário</th>
+                      <th className="p-4">E-mail</th>
+                      <th className="p-4">Papel</th>
+                      <th className="p-4">Plano</th>
+                      <th className="p-4">Desde</th>
+                      <th className="p-4 text-right">Ações</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {users.map((u) => (
+                      <tr key={u.user_id} className="border-b border-slate-800/50 hover:bg-white/[0.02]" data-testid={`user-row-${u.user_id}`}>
+                        <td className="p-4 font-medium">{u.name}</td>
+                        <td className="p-4 text-slate-400">{u.email}</td>
+                        <td className="p-4">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
+                            u.role === "admin" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-slate-500/10 text-slate-400 border-slate-500/20"
+                          }`}>
+                            {u.role === "admin" ? "Admin" : "Membro"}
+                          </span>
+                        </td>
+                        <td className="p-4 font-mono text-xs">{u.plan}</td>
+                        <td className="p-4 text-slate-500 text-xs">{u.created_at ? format(parseISO(u.created_at), "dd/MM/yyyy") : "—"}</td>
+                        <td className="p-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button size="sm" variant="outline" onClick={() => openEdit(u)}
+                              className="border-slate-700 bg-white/5 hover:bg-white/10 text-slate-300" data-testid={`user-edit-${u.user_id}`}>
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => deleteUser(u)} disabled={u.user_id === user.user_id}
+                              className="border-slate-700 bg-white/5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 hover:border-rose-500/30 disabled:opacity-40"
+                              data-testid={`user-delete-${u.user_id}`}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </TabsContent>
         )}
       </Tabs>
+
+      <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
+        <DialogContent className="bg-[#15151A] border-slate-800 text-slate-100" data-testid="user-dialog">
+          <DialogHeader>
+            <DialogTitle className="font-display">{editingUser ? "Editar usuário" : "Novo usuário"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={submitUser} className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-slate-300">Nome completo *</Label>
+              <Input required value={userForm.name} onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                className="bg-[#0E0E11] border-slate-700" placeholder="Maria Silva" data-testid="user-form-name" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-slate-300">E-mail *</Label>
+              <Input type="email" required disabled={!!editingUser} value={userForm.email}
+                onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                className="bg-[#0E0E11] border-slate-700 disabled:opacity-60" placeholder="pessoa@agencia.com.br" data-testid="user-form-email" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-slate-300">{editingUser ? "Nova senha (opcional)" : "Senha *"}</Label>
+              <Input type="password" required={!editingUser} minLength={6} value={userForm.password}
+                onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                className="bg-[#0E0E11] border-slate-700" placeholder={editingUser ? "Deixe em branco para manter" : "Mínimo 6 caracteres"}
+                data-testid="user-form-password" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-slate-300">Papel</Label>
+                <Select value={userForm.role} onValueChange={(v) => setUserForm({ ...userForm, role: v })}>
+                  <SelectTrigger className="bg-[#0E0E11] border-slate-700" data-testid="user-form-role"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200">
+                    {ROLES.map((r) => (<SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Plano</Label>
+                <Select value={userForm.plan} onValueChange={(v) => setUserForm({ ...userForm, plan: v })}>
+                  <SelectTrigger className="bg-[#0E0E11] border-slate-700" data-testid="user-form-plan"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200">
+                    {PLANS.map((p) => (<SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <Button type="submit" disabled={savingUser} className="w-full bg-red-600 hover:bg-red-500 text-white" data-testid="user-form-submit">
+              {savingUser ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              {editingUser ? "Salvar alterações" : "Criar usuário"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

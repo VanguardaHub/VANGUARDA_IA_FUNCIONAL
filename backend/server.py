@@ -273,6 +273,19 @@ class SettingsUpdate(BaseModel):
     agency_name: Optional[str] = None
     meta_connected: Optional[bool] = None
 
+class AdminUserCreate(BaseModel):
+    name: str
+    email: EmailStr
+    password: str = Field(min_length=6)
+    role: str = "member"
+    plan: str = "trial"
+
+class AdminUserUpdate(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    plan: Optional[str] = None
+    password: Optional[str] = None
+
 # ---------------- Auth endpoints ----------------
 
 @api_router.post("/auth/register")
@@ -971,6 +984,72 @@ async def update_settings(req: SettingsUpdate, user: dict = Depends(get_current_
 async def admin_users(user: dict = Depends(get_admin_user)):
     users = await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(200)
     return users
+
+@api_router.post("/admin/users")
+async def admin_create_user(req: AdminUserCreate, admin: dict = Depends(get_admin_user)):
+    email = req.email.lower()
+    if req.role not in ("admin", "member"):
+        raise HTTPException(status_code=400, detail="Papel inválido")
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="E-mail já cadastrado")
+    user_id = f"user_{uuid.uuid4().hex[:12]}"
+    doc = {
+        "user_id": user_id, "email": email, "name": req.name,
+        "password_hash": hash_password(req.password), "role": req.role,
+        "picture": None, "plan": req.plan, "token_version": 0,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.users.insert_one(doc)
+    await db.app_settings.insert_one({
+        "user_id": user_id, "default_model": "gpt-5.4-mini",
+        "default_tone": "profissional", "agency_name": "", "meta_connected": False,
+    })
+    await log_activity(admin["user_id"], "usuario", f"Usuário criado: {email} ({req.role})")
+    return public_user(doc)
+
+@api_router.put("/admin/users/{user_id}")
+async def admin_update_user(user_id: str, req: AdminUserUpdate, admin: dict = Depends(get_admin_user)):
+    target = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not target:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    updates = {}
+    if req.name is not None:
+        updates["name"] = req.name
+    if req.plan is not None:
+        updates["plan"] = req.plan
+    if req.role is not None:
+        if req.role not in ("admin", "member"):
+            raise HTTPException(status_code=400, detail="Papel inválido")
+        if target["role"] == "admin" and req.role != "admin":
+            admin_count = await db.users.count_documents({"role": "admin"})
+            if admin_count <= 1:
+                raise HTTPException(status_code=400, detail="Não é possível rebaixar o último administrador")
+        updates["role"] = req.role
+    if req.password:
+        if len(req.password) < 6:
+            raise HTTPException(status_code=400, detail="A senha deve ter ao menos 6 caracteres")
+        updates["password_hash"] = hash_password(req.password)
+        updates["token_version"] = target.get("token_version", 0) + 1
+    if updates:
+        await db.users.update_one({"user_id": user_id}, {"$set": updates})
+        await log_activity(admin["user_id"], "usuario", f"Usuário atualizado: {target['email']}")
+    return public_user(await db.users.find_one({"user_id": user_id}, {"_id": 0}))
+
+@api_router.delete("/admin/users/{user_id}")
+async def admin_delete_user(user_id: str, admin: dict = Depends(get_admin_user)):
+    target = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not target:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    if user_id == admin["user_id"]:
+        raise HTTPException(status_code=400, detail="Você não pode remover a própria conta")
+    if target["role"] == "admin":
+        admin_count = await db.users.count_documents({"role": "admin"})
+        if admin_count <= 1:
+            raise HTTPException(status_code=400, detail="Não é possível remover o último administrador")
+    await db.users.delete_one({"user_id": user_id})
+    await db.app_settings.delete_many({"user_id": user_id})
+    await log_activity(admin["user_id"], "usuario", f"Usuário removido: {target['email']}")
+    return {"message": "Usuário removido"}
 
 # ---------------- Seeding ----------------
 

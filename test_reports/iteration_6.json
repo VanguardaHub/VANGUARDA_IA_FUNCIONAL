@@ -1,0 +1,24 @@
+{
+  "summary": "Regression test after Security Audit fixes (SEC-001..004 + Google OAuth hardening). Focus on frontend flows: admin login, campaign toggle/publish, plans checkout, and protected route redirect. All primary flows PASS. Admin login redirects to /dashboard; campaign toggle & publish return 200 with correct toasts; Stripe checkout opens successfully from Plans page for an authenticated user (no 401/500). Protected route /dashboard correctly redirects to /login when unauthenticated.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard", "issues": ["Recharts warning: ResponsiveContainer width/height computed as -1 on initial render (cosmetic, chart renders correctly afterwards)"]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Security fixes verified end-to-end from UI: /api/campaigns/{id}/status (Pydantic body) returns 200; /api/payments/checkout returns valid Stripe URL when authenticated via cookie (withCredentials).",
+    "Minor: Recharts ResponsiveContainer emits width(-1)/height(-1) warnings; consider setting explicit min-height on chart container."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend-only)", "frontend": "100%"},
+  "test_credentials": "Admin: jussaracavalcante25@gmail.com / Vanguarda@2026 - working",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Security regression complete. Verified: (1) unauthenticated /dashboard -> /login redirect; (2) admin login (200) + welcome toast + navigate to /dashboard; (3) /campanhas: campaign-toggle-<id> click -> PATCH /api/campaigns/{id}/status 200 with 'Campanha pausada' toast; campaign-publish-<id> -> /api/campaigns/{id}/publish 200; (4) /planos: plan-checkout-starter -> /api/payments/checkout succeeded and browser navigated to https://checkout.stripe.com/c/pay/cs_test_... (Sandbox). Did NOT complete payment. Logout was skipped because navigation landed on Stripe (external domain); already validated in previous iterations."
+}

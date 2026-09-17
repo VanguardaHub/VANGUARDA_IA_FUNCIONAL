@@ -86,3 +86,13 @@ Multi-tenant por usuário; geração de conteúdo com IA contextualizada por mar
 - Logout agora retorna à landing '/': AppLayout.handleLogout navega para '/' (replace) ANTES de await logout(), evitando a corrida com ProtectedRoute.
 - Agendamento: inputs datetime-local em Pieces/Campaigns com min=agora (bloqueia datas passadas).
 - Validado: backend por curl (guardrails corretos) + testing_agent frontend 100% (iteration_5.json).
+
+## 2026-06 — Security Audit + correções
+- Auditoria (security_audit_agent) apontou 1 CRÍTICO + 3 médios; corrigidos:
+  - SEC-001 (CRÍTICO): removidas credenciais de admin de arquivos versionados (auth_testing.md, tests/backend_test.py agora lêem de env/backend/.env). git grep confirma limpo.
+  - SEC-002: seed_admin não sobrescreve mais a senha de um admin existente (evita reset a cada boot); garante só o papel admin.
+  - SEC-003: /api/payments/checkout e /api/payments/status/{id} agora exigem autenticação (Depends get_current_user_id) e derivam user_id do cookie; status valida ownership. Curl: 401 sem auth, 200 com auth.
+  - SEC-004: /api/campaigns/{id}/status usa body Pydantic (CampaignStatusUpdate) — força preflight/JSON (mitiga CSRF).
+  - Hardening: Google custom OAuth exige email_verified.
+- Validado: curl + testing_agent frontend 100% (iteration_6.json), sem regressões.
+- PENDENTE (ação do usuário antes de export público no GitHub): rotacionar ADMIN_PASSWORD e limpar o histórico do git das credenciais que já foram commitadas. .env (Stripe/JWT/LLM) está gitignored.

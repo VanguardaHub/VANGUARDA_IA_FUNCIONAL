@@ -1,0 +1,33 @@
+{
+  "summary": "Frontend UI testing for User Management (Settings), Logout redirect, and datetime-local min attr on Pieces/Campaigns scheduling. 10/12 checks passed. Two issues found: (1) Logout redirects to /login instead of landing (/) due to a duplicate '/' Route in App.js causing ProtectedRoute to intercept the redirect. (2) Settings users table shows raw plan id (e.g., 'agency') instead of the friendly label (e.g., 'Enterprise').",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "App.js router", "issue": "Two <Route path=\"/\"> declarations (Landing + ProtectedRoute layout). After logout, navigate('/') is intercepted by ProtectedRoute and redirects to /login. Handle by removing the duplicate parent path='/' on the protected AppLayout (use path='' with index children, or wrap children under a distinct base path). Expected: landing page visible after logout.", "selector": "[data-testid=landing-page]", "priority": "HIGH"},
+      {"component": "Settings.jsx users table (line 253)", "issue": "Displays raw plan id: {u.plan} => shows 'agency','pro','trial' instead of PLANS label 'Enterprise','Pro','Trial'. Also role column may show raw id. Apply PLAN_LABELS/ROLE_LABELS mapping.", "selector": "[data-testid=users-table]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "User dialog", "issues": ["Radix DialogContent missing Description/aria-describedby (a11y warning in console)."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Fix App.js: remove/rename duplicate '/' route so navigate('/') after logout renders <Landing/> (currently redirects to /login).",
+    "Settings.jsx: map plan/role ids to labels in the users table row for better UX.",
+    "Add DialogDescription (or aria-describedby) inside user-dialog to silence a11y warning."
+  ],
+  "critical_code_review_comments": [
+    "App.js has two routes with path='/', causing routing ambiguity — React Router will match the ProtectedRoute layout for '/' if the user is authenticated but redirects to /login when logout clears user state (observed behavior).",
+    "Settings.jsx renders raw enum values in the users table instead of localized labels.",
+    "DialogContent throughout Settings lacks DialogDescription for accessibility."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "83%"},
+  "test_credentials": "Admin jussaracavalcante25@gmail.com / Vanguarda@2026 (worked)",
+  "seed_data_creation": "Created and deleted temporary QA user qauser+<rand>@vanguarda.com.br via UI (cleaned up).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Tests executed via Playwright against REACT_APP_BACKEND_URL. PASS: login_admin, settings_tab_team_visible, users_table_visible, new_user_button_visible, create_user (dialog closes + row appears), edit_email_disabled (email field disabled in edit mode), admin_own_delete_disabled, delete_user (window.confirm accepted, row removed), piece_schedule_min (min=2026-09-17T11:30), campaign_schedule_min (min=2026-09-17T11:30). FAIL: logout_to_landing (url ends at /login, no [data-testid=landing-page]); edit_user_plan_enterprise (assertion looked for 'Enterprise' text in row but table renders raw plan id 'agency' — update likely persisted correctly, only display label wrong). No 500s in console.",
+  "rca_of_the_issue": "Logout: App.js declares '/' twice. When handleLogout calls navigate('/'), the matched route is the ProtectedRoute-wrapped AppLayout (last matching '/' with children) which forces redirect to /login when user becomes null. Fix by consolidating routes — e.g., remove path='/' from the protected parent Route (use path-less parent and give children absolute paths like /dashboard) or reorder/simplify. Plan label: Settings.jsx table cell uses {u.plan} without label map."
+}

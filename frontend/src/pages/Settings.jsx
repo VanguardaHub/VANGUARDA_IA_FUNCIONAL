@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Save, Loader2, Cpu, Building2, KeyRound, Users, UserPlus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
@@ -16,6 +16,7 @@ const TONES = ["profissional", "persuasivo", "descontraído", "luxuoso", "motiva
 const ROLES = [{ id: "member", label: "Membro" }, { id: "admin", label: "Admin" }];
 const PLANS = [{ id: "trial", label: "Trial" }, { id: "starter", label: "Starter" }, { id: "pro", label: "Pro" }, { id: "agency", label: "Enterprise" }];
 const EMPTY_USER = { name: "", email: "", password: "", role: "member", plan: "trial" };
+const planLabel = (id) => PLANS.find((p) => p.id === id)?.label || id;
 
 export default function Settings() {
   const { user } = useAuth();
@@ -250,7 +251,7 @@ export default function Settings() {
                             {u.role === "admin" ? "Admin" : "Membro"}
                           </span>
                         </td>
-                        <td className="p-4 font-mono text-xs">{u.plan}</td>
+                        <td className="p-4 font-mono text-xs">{planLabel(u.plan)}</td>
                         <td className="p-4 text-slate-500 text-xs">{u.created_at ? format(parseISO(u.created_at), "dd/MM/yyyy") : "—"}</td>
                         <td className="p-4">
                           <div className="flex items-center justify-end gap-2">
@@ -279,6 +280,9 @@ export default function Settings() {
         <DialogContent className="bg-[#15151A] border-slate-800 text-slate-100" data-testid="user-dialog">
           <DialogHeader>
             <DialogTitle className="font-display">{editingUser ? "Editar usuário" : "Novo usuário"}</DialogTitle>
+            <DialogDescription className="text-slate-500 text-sm">
+              {editingUser ? "Atualize os dados de acesso desta conta." : "Crie uma nova conta de acesso à plataforma."}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={submitUser} className="space-y-4">
             <div className="space-y-2">

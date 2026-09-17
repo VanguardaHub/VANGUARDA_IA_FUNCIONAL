@@ -44,7 +44,6 @@ function AppRouter() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/payment/:status" element={<PaymentResult />} />
       <Route
-        path="/"
         element={
           <ProtectedRoute>
             <AppLayout />

@@ -1,0 +1,20 @@
+{
+  "summary": "Frontend E2E do fluxo de upload de arquivos na Bíblia (Vanguarda.IA) validado com sucesso. Login admin OK, aba Documentos exibe botão/input de upload com data-testids esperados, envio de .txt processa com IA (~1s), toast de sucesso aparece, novo documento surge na lista com título, contexto estruturado em pt-BR e selo do arquivo (paperclip + source_file). Formato não suportado (.zip) exibe toast de erro em pt-BR e backend responde 400. Aba 'Consulta com IA' carrega normalmente.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100%"},
+  "test_credentials": "Admin: jussaracavalcante25@gmail.com / Vanguarda@2026",
+  "seed_data_creation": "Criado documento de teste na Bíblia via upload de vanguarda_test.txt (marca Vanguarda IA).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Feature de upload da Bíblia funcional. Selectors validados: bible-tab-docs, bible-upload-button, bible-upload-input, bible-doc-{id}. Toasts do sonner aparecem em li[data-sonner-toast]. Upload de txt/docx retorna quase instantâneo; imagens podem levar 10-30s. Feedback: durante o processamento o contador 'Documentos (N)' atualiza corretamente após concluir.",
+  "rca of the issue": "N/A"
+}

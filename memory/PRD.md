@@ -104,3 +104,13 @@ Multi-tenant por usuário; geração de conteúdo com IA contextualizada por mar
 - Generator: extração de título passou a usar a primeira linha do stream.
 - Validado: curl (texto limpo, imagem high ok) + testing_agent frontend ~95% (iteration_7.json); geração de imagem marcada PARCIAL apenas por lentidão no preview.
 - BACKLOG recomendado: mover imagens para object storage (URL em vez de base64) para não inchar GET /pieces nem os documentos.
+
+## 2026-06 — Bíblia: anexos com extração de contexto por IA
+- Backend: POST /api/bible/upload (multipart) aceita PDF, DOCX, XLSX, PNG, JPEG, TXT, CSV, MD (máx 15MB). Extração: pypdf/python-docx/openpyxl/decode; imagens via LlmChat ImageContent (vision). Refina com gpt-5.4-mini gerando contexto estruturado pt-BR; salva em bible_documents com campo source_file. Formato inválido -> 400.
+- Frontend Bible.jsx: botão "Anexar" + input oculto; durante upload mostra "Processando com IA..."; docs mostram selo com nome do arquivo (Paperclip).
+- Libs adicionadas: pypdf, python-docx, openpyxl.
+- Validado: curl (docx/xlsx/png ok, unsupported 400) + testing_agent frontend 100% (iteration_8.json).
+
+## Nekt MCP (banco de clientes) — PENDENTE DE CREDENCIAIS
+- Usuário quer: SINCRONIZAR clientes do Nekt + usar como CONTEXTO IA. Campos: client_id, client_name, client_cnpj, client_group_name.
+- BLOQUEADO: falta o ENDPOINT MCP do Nekt e o VALOR do token Bearer. Nekt = MCP server (data warehouse), JSON-RPC over Streamable HTTP, plano pago. Implementar cliente MCP no backend + sync job + injeção de contexto quando credenciais chegarem.

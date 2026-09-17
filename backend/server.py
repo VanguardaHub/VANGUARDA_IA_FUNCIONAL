@@ -624,20 +624,24 @@ async def generate_piece(req: GeneratePieceRequest, user: dict = Depends(get_cur
     model_cfg = AI_MODELS[req.model]
     context = await build_brand_context(user["user_id"], req.client_id)
     system = (
-        "Você é o motor criativo da Vanguarda.IA, uma plataforma de marketing para agências brasileiras. "
-        "Escreva sempre em português do Brasil, com copy de altíssima qualidade, persuasiva e orientada a conversão. "
-        "Responda APENAS com o conteúdo da peça, sem explicações ou metacomentários."
+        "Você é diretor(a) de criação sênior da Vanguarda.IA, especialista em copywriting de marketing para agências brasileiras. "
+        "Escreva sempre em português do Brasil (pt-BR), com qualidade de nível profissional e PRONTA para publicar: gancho forte, storytelling, clareza, ritmo e foco em conversão. "
+        "Entregue a peça no formato nativo do canal, com quebras de linha bem pensadas e emojis usados com bom gosto quando fizer sentido. "
+        "NUNCA use rótulos como 'TÍTULO:', 'LEGENDA:', 'CORPO:', 'CTA:' nem qualquer metacomentário, aspas envolvendo o texto ou explicação. Responda apenas com a peça final."
     )
+    context_block = f"Contexto da marca:\n{context}\n\n" if context else ""
     prompt = (
-        f"Crie uma peça do tipo: {PIECE_TYPES[req.piece_type]}.\n"
+        f"Formato da peça: {PIECE_TYPES[req.piece_type]}.\n"
         f"Tom de voz: {req.tone}.\n"
-        f"Briefing do usuário: {req.prompt}\n"
-        f"{('Contexto da marca: ' + context) if context else ''}\n\n"
-        "Estrutura obrigatória da resposta:\n"
-        "TÍTULO: <título curto e forte>\n"
-        "LEGENDA/CORPO: <texto principal completo>\n"
-        "CTA: <chamada para ação>\n"
-        "HASHTAGS: <hashtags relevantes, se aplicável ao formato>"
+        f"Briefing: {req.prompt}\n\n"
+        f"{context_block}"
+        "Regras de saída:\n"
+        "1) Primeira linha: um título/gancho curto e magnético (sem prefixo, sem aspas).\n"
+        "2) Deixe uma linha em branco e escreva o corpo completo da peça no formato ideal para o canal, com parágrafos curtos e escaneáveis.\n"
+        "3) Finalize com uma chamada para ação (CTA) clara e específica.\n"
+        "4) Se o canal for social (Instagram, Stories, Meta Ads, LinkedIn), acrescente ao final uma única linha com 6 a 12 hashtags relevantes.\n"
+        "5) Se for e-mail marketing, a primeira linha deve ser um assunto irresistível, seguido do corpo do e-mail.\n"
+        "Capriche: entregue no nível de um profissional sênior, sem clichês vazios."
     )
 
     async def event_stream():
@@ -666,8 +670,14 @@ async def generate_image(req: ImageGenRequest, user: dict = Depends(get_current_
     try:
         gen = OpenAIImageGeneration(api_key=EMERGENT_LLM_KEY)
         images = await gen.generate_images(
-            prompt=f"Criativo publicitário profissional para rede social, alta qualidade visual: {req.prompt}",
-            model="gpt-image-1", number_of_images=1, quality="medium",
+            prompt=(
+                "Crie um criativo publicitário profissional de altíssima qualidade, pronto para publicação em redes sociais. "
+                "Composição premium, iluminação cinematográfica, cores vibrantes e coerentes com a identidade da marca, "
+                "hierarquia visual clara e espaço equilibrado para o texto quando fizer sentido. "
+                "Acabamento de agência de publicidade, nítido e realista, sem aparência amadora e sem marcas d'água. "
+                f"Briefing do criativo: {req.prompt}"
+            ),
+            model="gpt-image-1", number_of_images=1, quality="high",
         )
         b64 = base64.b64encode(images[0]).decode()
         await log_activity(user["user_id"], "geracao", "Imagem gerada com IA (GPT Image 1)")

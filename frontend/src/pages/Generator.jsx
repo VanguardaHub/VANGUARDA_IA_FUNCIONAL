@@ -66,8 +66,8 @@ export default function Generator() {
       onDelta: (d) => {
         full += d;
         setContent(full);
-        const m = full.match(/TÍTULO:\s*(.+)/i);
-        if (m) setTitle(m[1].trim());
+        const firstLine = full.split("\n").find((l) => l.trim());
+        if (firstLine) setTitle(firstLine.replace(/^#+\s*/, "").replace(/^["']|["']$/g, "").trim().slice(0, 80));
       },
       onDone: () => {
         setGenerating(false);

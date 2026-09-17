@@ -18,14 +18,19 @@ import jwt
 import httpx
 from html import escape
 from urllib.parse import urlparse
-from fastapi import FastAPI, APIRouter, Request, Response, HTTPException, BackgroundTasks, Depends
+from fastapi import FastAPI, APIRouter, Request, Response, HTTPException, BackgroundTasks, Depends, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
 
-from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
+from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone, ImageContent
 from emergentintegrations.llm.openai.image_generation import OpenAIImageGeneration
+
+from io import BytesIO
+import pypdf
+import docx as docx_lib
+import openpyxl
 
 from payments import payments_router
 
@@ -761,6 +766,102 @@ async def create_bible_doc(req: BibleDocCreate, user: dict = Depends(get_current
     })
     await db.bible_documents.insert_one(doc)
     await log_activity(user["user_id"], "biblia", f"Documento adicionado à Bíblia: {req.title}")
+    doc.pop("_id", None)
+    return doc
+
+def _extract_text_from_file(filename: str, data: bytes) -> str:
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext == "pdf":
+        reader = pypdf.PdfReader(BytesIO(data))
+        return "\n".join((page.extract_text() or "") for page in reader.pages)
+    if ext == "docx":
+        d = docx_lib.Document(BytesIO(data))
+        return "\n".join(p.text for p in d.paragraphs if p.text)
+    if ext == "xlsx":
+        wb = openpyxl.load_workbook(BytesIO(data), read_only=True, data_only=True)
+        parts = []
+        for ws in wb.worksheets:
+            parts.append(f"# Planilha: {ws.title}")
+            for row in ws.iter_rows(values_only=True):
+                cells = [str(c) for c in row if c is not None]
+                if cells:
+                    parts.append(" | ".join(cells))
+        return "\n".join(parts)
+    if ext in ("txt", "md", "csv"):
+        return data.decode("utf-8", errors="ignore")
+    return ""
+
+@api_router.post("/bible/upload")
+async def upload_bible_doc(
+    file: UploadFile = File(...),
+    title: Optional[str] = Form(None),
+    category: str = Form("Geral"),
+    user: dict = Depends(get_current_user),
+):
+    filename = file.filename or "arquivo"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    supported = {"pdf", "docx", "xlsx", "png", "jpg", "jpeg", "txt", "md", "csv"}
+    if ext not in supported:
+        raise HTTPException(status_code=400, detail="Formato não suportado. Use PDF, DOCX, XLSX, PNG, JPEG, TXT, CSV ou MD.")
+    data = await file.read()
+    if len(data) > 15 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Arquivo muito grande (máx. 15MB).")
+
+    is_image = ext in ("png", "jpg", "jpeg")
+    raw_text = ""
+    if not is_image:
+        try:
+            raw_text = _extract_text_from_file(filename, data)
+        except Exception as e:
+            logger.error(f"Falha ao extrair texto de {filename}: {e}")
+            raise HTTPException(status_code=422, detail="Não foi possível ler o arquivo enviado.")
+
+    system = (
+        "Você organiza documentos para a base de conhecimento (Bíblia) de uma agência de marketing. "
+        "Leia o material e produza um resumo estruturado em português do Brasil, pronto para servir de CONTEXTO para uma IA de criação. "
+        "Inclua: visão geral, pontos-chave, tom de voz/diretrizes (se houver) e dados/números relevantes. "
+        "Seja fiel ao conteúdo, não invente. Responda apenas com o texto do resumo, sem preâmbulos."
+    )
+    instruction = f"Nome do arquivo: {filename}\nCategoria: {category}\n\n"
+    if is_image:
+        b64 = base64.b64encode(data).decode()
+        msg = UserMessage(
+            text=instruction + "Extraia todo o texto visível e descreva o conteúdo desta imagem como contexto de marca/criativo.",
+            file_contents=[ImageContent(image_base64=b64)],
+        )
+    else:
+        excerpt = raw_text[:12000] if raw_text.strip() else "(sem texto extraível)"
+        msg = UserMessage(text=instruction + f"Conteúdo extraído do documento:\n\n{excerpt}")
+
+    context_text = ""
+    try:
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"bible-upload-{uuid.uuid4().hex[:8]}",
+            system_message=system,
+        ).with_model("openai", "gpt-5.4-mini")
+        parts = []
+        async for ev in chat.stream_message(msg):
+            if isinstance(ev, TextDelta):
+                parts.append(ev.content)
+            elif isinstance(ev, StreamDone):
+                break
+        context_text = "".join(parts).strip()
+    except Exception as e:
+        logger.error(f"Falha ao refinar anexo da Bíblia: {e}")
+        context_text = raw_text.strip()
+
+    if not context_text:
+        raise HTTPException(status_code=422, detail="Não foi possível extrair conteúdo do arquivo.")
+
+    doc = {
+        "id": f"doc_{uuid.uuid4().hex[:12]}", "user_id": user["user_id"],
+        "title": (title or "").strip() or filename.rsplit(".", 1)[0][:80],
+        "category": category, "content": context_text, "source_file": filename,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.bible_documents.insert_one(doc)
+    await log_activity(user["user_id"], "biblia", f"Anexo processado na Bíblia: {filename}")
     doc.pop("_id", None)
     return doc
 

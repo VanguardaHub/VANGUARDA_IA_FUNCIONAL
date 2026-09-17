@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookOpen, Plus, Trash2, Send, Loader2, FileText } from "lucide-react";
+import { BookOpen, Plus, Trash2, Send, Loader2, FileText, Upload, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 
@@ -16,6 +16,8 @@ export default function Bible() {
   const [docs, setDocs] = useState([]);
   const [form, setForm] = useState({ title: "", category: "Geral", content: "" });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
   const [question, setQuestion] = useState("");
   const [model, setModel] = useState("gpt-5.4-mini");
   const [asking, setAsking] = useState(false);
@@ -38,6 +40,26 @@ export default function Bible() {
       toast.error(formatApiError(err));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const uploadDoc = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    if (form.title) fd.append("title", form.title);
+    fd.append("category", form.category);
+    try {
+      await api.post("/bible/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      toast.success("Anexo processado e adicionado à Bíblia");
+      setForm({ title: "", category: form.category, content: "" });
+      load();
+    } catch (err) {
+      toast.error(formatApiError(err));
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
   };
 
@@ -175,6 +197,18 @@ export default function Bible() {
                   {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
                   Adicionar à Bíblia
                 </Button>
+
+                <div className="relative py-1 text-center">
+                  <span className="text-[11px] text-slate-600 bg-transparent px-2">ou envie um arquivo</span>
+                </div>
+                <input ref={fileRef} type="file" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.txt,.csv,.md"
+                  className="hidden" onChange={(e) => uploadDoc(e.target.files?.[0])} data-testid="bible-upload-input" />
+                <Button type="button" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()}
+                  className="w-full border-slate-700 bg-white/5 hover:bg-white/10 text-slate-200" data-testid="bible-upload-button">
+                  {uploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                  {uploading ? "Processando com IA..." : "Anexar PDF, DOCX, XLSX, imagem"}
+                </Button>
+                <p className="text-[11px] text-slate-600 mt-1.5 leading-snug">A IA lê o arquivo e cria o contexto automaticamente. Máx. 15MB.</p>
               </form>
             </div>
 
@@ -195,7 +229,10 @@ export default function Bible() {
                           </span>
                         </div>
                         <p className="text-sm text-slate-400 line-clamp-3 whitespace-pre-wrap">{d.content}</p>
-                        <p className="text-xs text-slate-600 font-mono mt-2">{format(parseISO(d.created_at), "dd/MM/yyyy HH:mm")}</p>
+                        <p className="text-xs text-slate-600 font-mono mt-2 flex items-center gap-2">
+                          {format(parseISO(d.created_at), "dd/MM/yyyy HH:mm")}
+                          {d.source_file && (<span className="inline-flex items-center gap-1 text-slate-500"><Paperclip className="w-3 h-3" /> {d.source_file}</span>)}
+                        </p>
                       </div>
                       <button onClick={() => removeDoc(d.id)} data-testid={`bible-doc-delete-${d.id}`}
                         className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-lg hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 shrink-0">

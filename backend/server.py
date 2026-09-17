@@ -261,6 +261,9 @@ class CampaignCreate(BaseModel):
     budget_daily: float = 100.0
     status: str = "ativa"
 
+class CampaignStatusUpdate(BaseModel):
+    status: str
+
 class AlertRuleCreate(BaseModel):
     name: str
     metric: str
@@ -347,6 +350,8 @@ async def google_session(request: Request, response: Response):
             )
         except ValueError:
             raise HTTPException(status_code=401, detail="Token Google inválido")
+        if not gdata.get("email_verified", False):
+            raise HTTPException(status_code=401, detail="E-mail Google não verificado")
         email = gdata["email"].lower()
         user = await db.users.find_one({"email": email}, {"_id": 0})
         if not user:
@@ -865,9 +870,8 @@ async def sync_campaign(campaign_id: str, user: dict = Depends(get_current_user)
     return {"message": "Sincronizado", "latest": new_day}
 
 @api_router.post("/campaigns/{campaign_id}/status")
-async def toggle_campaign_status(campaign_id: str, request: Request, user: dict = Depends(get_current_user)):
-    body = await request.json()
-    status = body.get("status")
+async def toggle_campaign_status(campaign_id: str, req: CampaignStatusUpdate, user: dict = Depends(get_current_user)):
+    status = req.status
     if status not in ("ativa", "pausada", "em_analise"):
         raise HTTPException(status_code=400, detail="Status inválido")
     result = await db.campaigns.update_one({"id": campaign_id, "user_id": user["user_id"]}, {"$set": {"status": status}})
@@ -1069,8 +1073,9 @@ async def seed_admin():
             "user_id": user_id, "default_model": "claude-sonnet-4-6",
             "default_tone": "persuasivo", "agency_name": "Vanguarda Digital", "meta_connected": True,
         })
-    elif not verify_password(admin_password, existing.get("password_hash", "")):
-        await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
+    elif not existing.get("role") == "admin":
+        # Garante o papel de admin sem sobrescrever a senha existente (evita reset em cada boot).
+        await db.users.update_one({"email": admin_email}, {"$set": {"role": "admin"}})
 
 async def seed_demo_data():
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com").lower()

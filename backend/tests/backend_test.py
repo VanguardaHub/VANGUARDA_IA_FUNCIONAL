@@ -14,8 +14,20 @@ if not BASE_URL:
 
 API = f"{BASE_URL}/api"
 
-ADMIN_EMAIL = "jussaracavalcante25@gmail.com"
-ADMIN_PASSWORD = "Vanguarda@2026"
+def _env_from_backend(key: str) -> str:
+    v = os.environ.get(key)
+    if v:
+        return v
+    from pathlib import Path
+    p = Path("/app/backend/.env")
+    if p.exists():
+        for line in p.read_text().splitlines():
+            if line.startswith(f"{key}="):
+                return line.split("=", 1)[1].strip().strip('"')
+    return ""
+
+ADMIN_EMAIL = _env_from_backend("ADMIN_EMAIL")
+ADMIN_PASSWORD = _env_from_backend("ADMIN_PASSWORD")
 
 
 # ---------------- Fixtures ----------------

@@ -3,8 +3,9 @@ import json
 from datetime import datetime, timezone
 from typing import Optional
 
+import jwt
 import stripe
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel, Field
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -15,6 +16,26 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 mongo_client = AsyncIOMotorClient(os.environ["MONGO_URL"])
 db = mongo_client[os.environ.get("DB_NAME", "app")]
 payment_transactions = db["payment_transactions"]
+
+JWT_ALGORITHM = "HS256"
+
+async def get_current_user_id(request: Request) -> str:
+    token = request.cookies.get("session_token") or request.cookies.get("access_token")
+    auth = request.headers.get("Authorization", "")
+    if not token and auth.startswith("Bearer "):
+        token = auth[7:]
+    if not token:
+        raise HTTPException(401, "Não autenticado")
+    sess = await db.user_sessions.find_one({"session_token": token})
+    if sess:
+        return sess["user_id"]
+    try:
+        payload = jwt.decode(token, os.environ["JWT_SECRET"], algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "access":
+            raise HTTPException(401, "Token inválido")
+        return payload["sub"]
+    except jwt.InvalidTokenError:
+        raise HTTPException(401, "Não autenticado")
 
 SMP_COUNTRIES = {
     "AU", "AT", "BE", "BG", "CA", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GI", "GR",
@@ -54,7 +75,7 @@ class CheckoutRequest(BaseModel):
     user_id: Optional[str] = None
 
 @payments_router.post("/api/payments/checkout")
-async def create_checkout(req: CheckoutRequest):
+async def create_checkout(req: CheckoutRequest, user_id: str = Depends(get_current_user_id)):
     prices = stripe.Price.list(lookup_keys=[req.lookup_key], active=True, limit=1).data
     if not prices:
         raise HTTPException(500, f"Preço não encontrado: {req.lookup_key}")
@@ -64,7 +85,7 @@ async def create_checkout(req: CheckoutRequest):
         mode="subscription" if price.recurring else "payment",
         success_url=f"{req.origin_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{req.origin_url}/payment/cancel",
-        metadata={"user_id": req.user_id or "", "lookup_key": req.lookup_key},
+        metadata={"user_id": user_id, "lookup_key": req.lookup_key},
     )
     tax_mode = get_tax_mode()
     if tax_mode == "full":
@@ -91,7 +112,7 @@ async def create_checkout(req: CheckoutRequest):
     else:
         session = stripe.checkout.Session.create(**kwargs)
     await payment_transactions.insert_one({
-        "session_id": session.id, "user_id": req.user_id, "lookup_key": req.lookup_key,
+        "session_id": session.id, "user_id": user_id, "lookup_key": req.lookup_key,
         "amount": (price.unit_amount or 0) * req.quantity, "currency": price.currency,
         "status": "initiated", "payment_status": "pending",
         "created_at": datetime.now(timezone.utc), "updated_at": datetime.now(timezone.utc),
@@ -113,10 +134,12 @@ async def mark_paid(session_id: str, subscription=None, payment_intent=None, pay
             await db.users.update_one({"user_id": record["user_id"]}, {"$set": {"plan": plan}})
 
 @payments_router.get("/api/payments/status/{session_id}")
-async def get_status(session_id: str):
+async def get_status(session_id: str, user_id: str = Depends(get_current_user_id)):
     record = await payment_transactions.find_one({"session_id": session_id})
     if not record:
         raise HTTPException(404, "Transação não encontrada")
+    if record.get("user_id") and record["user_id"] != user_id:
+        raise HTTPException(403, "Acesso negado")
     if record.get("payment_status") != "paid":
         try:
             s = stripe.checkout.Session.retrieve(session_id)

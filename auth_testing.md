@@ -3,8 +3,8 @@
 App URL: https://marketplace-app-463.preview.emergentagent.com
 Backend: mesma URL com prefixo /api. Banco MongoDB: `test_database` (via MONGO_URL local: mongodb://localhost:27017).
 
-## Credenciais (ver /app/memory/test_credentials.md)
-- Admin: jussaracavalcante25@gmail.com / Vanguarda@2026 (role admin, plano agency)
+## Credenciais (NÃO versionar aqui — ver /app/memory/test_credentials.md, que é gitignored)
+- Admin: consulte /app/memory/test_credentials.md
 
 ## Step 1: MongoDB Verification
 mongosh --eval "
@@ -14,9 +14,9 @@ print(JSON.stringify(db.users.findOne({role: 'admin'}, {password_hash: 1}).passw
 "
 Verificar: hash bcrypt começa com `$2b$`; índices em users.email (unique), login_attempts.identifier, password_reset_tokens.token_hash (unique).
 
-## Step 2: API Testing
-curl -c /tmp/cookies.txt -X POST https://marketplace-app-463.preview.emergentagent.com/api/auth/login -H "Content-Type: application/json" -d '{"email":"jussaracavalcante25@gmail.com","password":"Vanguarda@2026"}'
-curl -b /tmp/cookies.txt https://marketplace-app-463.preview.emergentagent.com/api/auth/me
+## Step 2: API Testing (exporte ADMIN_EMAIL/ADMIN_PASSWORD de /app/backend/.env; não cole credenciais aqui)
+curl -c /tmp/cookies.txt -X POST "$BACKEND/api/auth/login" -H "Content-Type: application/json" -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}"
+curl -b /tmp/cookies.txt "$BACKEND/api/auth/me"
 Deve retornar o usuário. Cookies access_token + refresh_token setados.
 
 ## Step 3: Password Reset

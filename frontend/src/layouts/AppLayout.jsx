@@ -29,8 +29,8 @@ export default function AppLayout() {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+    navigate("/", { replace: true });
     await logout();
-    navigate("/");
   };
 
   return (

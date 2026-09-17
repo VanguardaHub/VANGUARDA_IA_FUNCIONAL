@@ -1,0 +1,28 @@
+{
+  "summary": "Retest of 2 fixes after iteration_3. Login->dashboard OK, internal routes (/dashboard, /configuracoes, /pecas, /campanhas) OK, plan labels in users table now render as friendly labels (Enterprise, Trial) as expected. HOWEVER, logout still redirects to /login instead of landing page /. Route change in App.js did NOT fix the underlying issue.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AppLayout.handleLogout + ProtectedRoute", "issue": "Logout still lands on /login instead of / (landing). After `await logout()` clears user state, the ProtectedRoute (App.js line 31) re-renders and executes `<Navigate to=\"/login\" replace />` BEFORE the subsequent `navigate('/')` in handleLogout can run. Landing page never becomes visible; user sees the login form. data-testid=landing-page NOT found after logout, data-testid=login-page/login form IS found. URL after logout: /login.", "selector": "[data-testid=menu-logout]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Fix logout redirect race. Options: (a) change ProtectedRoute to redirect unauthenticated users to '/' instead of '/login' (recommended, since landing has its own CTA to /login); or (b) in AppLayout.handleLogout, call navigate('/', { replace: true }) BEFORE await logout(); or (c) use window.location.assign('/') to force full navigation to landing after logout."
+  ],
+  "critical_code_review_comments": [
+    "ProtectedRoute redirects to /login while there is a public Landing at /. This causes UX inconsistency (logout always ends at login form). Consider redirecting to '/' and letting Landing surface the login CTA.",
+    "handleLogout ordering: await logout() flips user state synchronously via context, causing an immediate protected route redirect that races with the explicit navigate('/'). Ordering should be reversed or use replace navigation before clearing auth state.",
+    "Recharts warnings 'width(-1) and height(-1) of chart should be greater than 0' repeat on dashboard render — indicates ResponsiveContainer parent has no explicit height at initial mount. Minor perf/console noise, worth setting a fixed minHeight."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "66% (2 of 3 verified fixes)"},
+  "test_credentials": "Admin jussaracavalcante25@gmail.com / Vanguarda@2026 (works)",
+  "seed_data_creation": "None",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Verified working: (1) admin login -> /dashboard with app-layout, (2) internal navigation to /dashboard, /configuracoes, /pecas, /campanhas all render AppLayout, (3) Settings > Usuários tab (settings-tab-team) shows users-table with Plano column rendered as friendly labels Enterprise/Trial. Only remaining regression: logout goes to /login instead of / (landing). Cause is the ProtectedRoute Navigate to /login racing with AppLayout.handleLogout navigate('/'). Retest ONLY the logout flow after main agent's fix.",
+  "rca of the issue": "AppLayout.handleLogout awaits logout() which sets user=null in AuthContext. On the next React render, ProtectedRoute (App.js:31) sees !user and returns <Navigate to='/login' replace />. This mounts/replaces the location before the following navigate('/') call in handleLogout is executed by the router, so the final URL is /login. Fixes: change the ProtectedRoute fallback to '/' OR call navigate('/', { replace: true }) BEFORE logout() OR use window.location.href='/' to bypass the SPA race."
+}

@@ -96,3 +96,11 @@ Multi-tenant por usuário; geração de conteúdo com IA contextualizada por mar
   - Hardening: Google custom OAuth exige email_verified.
 - Validado: curl + testing_agent frontend 100% (iteration_6.json), sem regressões.
 - PENDENTE (ação do usuário antes de export público no GitHub): rotacionar ADMIN_PASSWORD e limpar o histórico do git das credenciais que já foram commitadas. .env (Stripe/JWT/LLM) está gitignored.
+
+## 2026-06 — Qualidade das peças de IA + modal de revisão
+- Texto: reescrito system/prompt de generate_piece — copy publicável de nível sênior, SEM rótulos 'TÍTULO:/LEGENDA:/CTA:'; primeira linha = gancho/título. (corrigido bug de f-string com backslash no Python 3.11).
+- Imagem: generate-image agora quality='high' + prompt de criativo profissional. Funciona (~49s local, ~3MB base64). CAVEAT: lento pelo proxy externo (pode passar de 90s ocasionalmente) e imagem pesada armazenada como base64 no doc.
+- Peças clicáveis: Pieces.jsx ganhou modal de revisão (piece-review-dialog) — clique no título/thumb/'Revisar peça' abre; mostra conteúdo completo + imagem grande; edição inline (título/conteúdo via PUT) e ações Aprovar/Publicar/Agendar dentro do modal.
+- Generator: extração de título passou a usar a primeira linha do stream.
+- Validado: curl (texto limpo, imagem high ok) + testing_agent frontend ~95% (iteration_7.json); geração de imagem marcada PARCIAL apenas por lentidão no preview.
+- BACKLOG recomendado: mover imagens para object storage (URL em vez de base64) para não inchar GET /pieces nem os documentos.

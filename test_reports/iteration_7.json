@@ -1,0 +1,22 @@
+{
+  "summary": "Frontend regression on the new AI Piece quality + Review Modal features. Verified: (1) admin login OK; (2) /gerar generates clean, publishable copy via GPT-5.4 Mini with NO literal labels ('TÍTULO:', 'LEGENDA:', 'LEGENDA/CORPO:', 'CTA:'); first line becomes the preview title; (3) 'Salvar peça' persists the piece and navigates to /pecas with the new item on top; (4) clicking piece-open-<id> opens piece-review-dialog showing full review-content; (5) 'Editar' reveals review-edit-title/review-edit-content, editing + 'Salvar alterações' persists (PUT /api/pieces/{id}) and updates modal header/list; (6) 'Publicar' from modal triggers 'Peça publicada!' toast and status badge becomes 'Publicada'. Image generation was triggered (generator-image-toggle + generate-image-button); the request was in-flight but did not complete within a 95s wait window in this preview - reported as PARTIAL per instructions (image is expected to take ~40-60s and can occasionally exceed 90s).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "generate_piece prompt is producing publishable copy without label prefixes as intended - verified with GPT-5.4 Mini on Post Instagram, hashtags at the end.",
+    "Review modal (piece-review-dialog) is complete: read + edit + approve/publish/schedule actions integrated with backend and reflect back in the list."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "~95% (image gen not observed to complete within 95s in preview)"},
+  "test_credentials": "Admin: jussaracavalcante25@gmail.com / Vanguarda@2026 - working",
+  "seed_data_creation": "Created one new piece via /gerar (Stellport, Post Instagram, GPT-5.4 Mini) titled 'TEST_Edited Title ...' and published it during the review-modal test.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All core flows for the AI piece quality + Review Modal feature are validated end-to-end from the UI. The only item marked partial is image generation completion (generated-image-preview did not become visible within 95s in the preview - text still generated cleanly). If retesting image gen, increase the wait for [data-testid=generated-image-preview] to >=120s and consider polling the /api/pieces/{id} field image_url as fallback."
+}

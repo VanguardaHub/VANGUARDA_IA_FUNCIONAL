@@ -1,0 +1,20 @@
+{
+  "summary": "Retest do fluxo de logout do Vanguarda.IA. Login admin -> /dashboard OK. Menu do usuário abre e item 'Sair' (data-testid=menu-logout) clica corretamente. Após logout, URL final = '/' e data-testid=landing-page visível (NÃO /login). Acesso direto a /dashboard sem sessão redireciona para /login (ProtectedRoute funcionando).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard charts", "issues": ["Recharts avisa width(-1)/height(-1) em containers responsivos — não bloqueia, mas pode piscar em telas menores"]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": ["Considerar corrigir os warnings do Recharts (definir minWidth/minHeight nos ResponsiveContainer)"],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Logout flow confirmado: navigate('/') antes de await logout() resolve a race com ProtectedRoute. Landing (public) mostra data-testid=landing-page. Após logout, /dashboard direto redireciona para /login."
+}

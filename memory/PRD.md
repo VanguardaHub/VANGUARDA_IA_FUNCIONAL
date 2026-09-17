@@ -79,3 +79,10 @@ Multi-tenant por usuário; geração de conteúdo com IA contextualizada por mar
   - Frontend: botões Publicar/Agendar em Pieces.jsx e Campaigns.jsx com dialog de datetime; novo status 'agendada' (roxo) nos mapas; exibição de published_at/scheduled_at.
 - Gerador: imagem gerada agora usa object-contain max-h-[75vh] (mostra imagem inteira, sem cortar).
 - Validado: backend por curl + testing_agent frontend 100% (iteration_2.json), sem bugs.
+
+## 2026-06 — Gestão de Usuários + logout landing + data mínima
+- Backend admin CRUD de usuários (JWT/bcrypt): POST/PUT/DELETE /api/admin/users com proteções — e-mail único, não remover a si mesmo, não rebaixar/remover o último admin, reset de senha incrementa token_version. Models AdminUserCreate/AdminUserUpdate.
+- Frontend Settings.jsx: aba "Usuários" (admin) com criar/editar/remover via dialog; email travado no modo edição; coluna Plano exibe label (Trial/Starter/Pro/Enterprise); botão remover do próprio admin desabilitado.
+- Logout agora retorna à landing '/': AppLayout.handleLogout navega para '/' (replace) ANTES de await logout(), evitando a corrida com ProtectedRoute.
+- Agendamento: inputs datetime-local em Pieces/Campaigns com min=agora (bloqueia datas passadas).
+- Validado: backend por curl (guardrails corretos) + testing_agent frontend 100% (iteration_5.json).

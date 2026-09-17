@@ -70,3 +70,12 @@ Multi-tenant por usuário; geração de conteúdo com IA contextualizada por mar
   - CTA final dedicado + CTA fixo no rodapé (aparece após scroll > 560px). Nav âncora (Recursos/Integrações/Planos).
   - Paleta Vanguarda mantida; animações framer-motion; todos com data-testid.
 - Verificado por screenshot: renderiza sem erros de console, sem overflow horizontal.
+
+## 2026-06 — SaaS vendável: cadastro mascarado + publicação simulada
+- Landing: removido botão "Começar grátis" (header só "Entrar", hero "Acessar plataforma"); todos os CTAs de /register apontam para /login; CTA fixo simplificado.
+- Cadastro público MASCARADO: rota /register redireciona para /login (App.js); removido link "Criar conta" do Login. Acesso só por e-mail/senha ou Google; novas contas criadas pelo admin.
+- Publicação SIMULADA (peças e campanhas):
+  - Backend: POST /api/pieces/{id}/publish e POST /api/campaigns/{id}/publish com body opcional {scheduled_at} ISO. Sem/agora -> status 'publicada' (peça) / 'ativa' (campanha) + published_at. Futuro -> status 'agendada' + scheduled_at. Log kind 'publicacao'. Model PublishRequest + helper _parse_schedule.
+  - Frontend: botões Publicar/Agendar em Pieces.jsx e Campaigns.jsx com dialog de datetime; novo status 'agendada' (roxo) nos mapas; exibição de published_at/scheduled_at.
+- Gerador: imagem gerada agora usa object-contain max-h-[75vh] (mostra imagem inteira, sem cortar).
+- Validado: backend por curl + testing_agent frontend 100% (iteration_2.json), sem bugs.

@@ -1,0 +1,24 @@
+{
+  "summary": "Frontend-only regression for the 4 requested changes on Vanguarda.IA. ALL PASS: (1) Landing has no 'Começar grátis' — header shows only 'Entrar' (landing-login-button), hero shows 'Acessar plataforma' (hero-cta-button), sticky CTA appears on scroll (sticky-cta-button, text 'Acessar plataforma'). (2) /register redirects to /login and /login has no 'go-to-register-link' (count=0). (3) Email/password login with admin succeeds and lands on /dashboard. (4) Peças: 4 piece-publish and 4 piece-schedule buttons — publishing removes the publish button for that piece (count=0 after) and shows 'publicada'; scheduling opens piece-schedule-dialog, accepts a future datetime via piece-schedule-input and piece-schedule-confirm, resulting in 'agendada' status. (5) Campanhas: 7 campaign-publish and 7 campaign-schedule buttons — publish shows 'publicada/ativa', schedule opens campaign-schedule-dialog and future date results in 'agendada'. (6) Gerador page renders with 'object-contain' in preview markup (data-testid=generated-image-preview will show full image; not exercised end-to-end to avoid slow AI image generation, but class verified in source).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Pieces.jsx/Campaigns.jsx: publishNow/doSchedule call refresh via load()/fetch after action — good; consider optimistic UI to avoid the ~1s flash.",
+    "datetime-local input has no min= attribute — user could enter past dates in UI; backend handles it by publishing immediately, but a min=now would be cleaner UX.",
+    "Generator preview: 'max-h-[75vh] object-contain' is fine; consider adding a background/checkerboard so transparent PNGs remain visible."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend-only run)", "frontend": "100% of requested flows"},
+  "test_credentials": "Admin: jussaracavalcante25@gmail.com / Vanguarda@2026 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Used existing seeded demo data (3 clients, pieces, 7 campaigns). Publish/schedule state was mutated on seeded records.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 4 UI change requests validated end-to-end. Image generation button (AI) was NOT clicked — verified only that Generator wrapper uses object-contain in source. If a subsequent run needs to prove the full-image display, click 'Gerar peça com IA' with 'Gerar imagem com IA' toggle and wait ~30-60s, then assert data-testid=generated-image-preview naturalWidth/Height ratio fits within container without cropping. State note: one seeded piece and one campaign have been transitioned to 'publicada' / 'ativa' + one each to 'agendada' during this run.",
+  "rca of the issue": "N/A — no bugs found."
+}

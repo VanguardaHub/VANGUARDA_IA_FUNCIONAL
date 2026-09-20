@@ -1,19 +1,22 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, formatApiError } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Users, Sparkles, Trash2, ArrowRight } from "lucide-react";
+import { Plus, Users, Sparkles, Trash2, ArrowRight, RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Clients() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [clients, setClients] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [form, setForm] = useState({ name: "", segment: "", contact_name: "", contact_email: "", brand_color: "#FF2D40", notes: "" });
 
   const load = () => api.get("/clients").then(({ data }) => setClients(data)).catch(() => {});
@@ -45,6 +48,19 @@ export default function Clients() {
     }
   };
 
+  const syncNekt = async () => {
+    setSyncing(true);
+    try {
+      const { data } = await api.post("/integrations/nekt/sync-clients");
+      toast.success(`Nekt sincronizado: ${data.imported} clientes importados`);
+      load();
+    } catch (err) {
+      toast.error(formatApiError(err));
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-up" data-testid="clients-page">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -52,7 +68,15 @@ export default function Clients() {
           <h1 className="font-display font-extrabold tracking-tight text-3xl">Clientes</h1>
           <p className="text-sm text-slate-400 mt-1">Carteira de clientes da agência</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <div className="flex gap-3">
+          {user?.role === "admin" && (
+            <Button variant="outline" onClick={syncNekt} disabled={syncing}
+              className="rounded-full border-slate-700 bg-white/5 hover:bg-white/10 text-slate-200" data-testid="sync-nekt-button">
+              {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+              {syncing ? "Sincronizando..." : "Sincronizar Nekt"}
+            </Button>
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button className="bg-red-600 hover:bg-red-500 text-white rounded-full" data-testid="new-client-button">
               <Plus className="w-4 h-4 mr-2" /> Novo cliente
@@ -101,6 +125,7 @@ export default function Clients() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {clients.length === 0 ? (

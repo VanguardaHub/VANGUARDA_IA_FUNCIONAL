@@ -103,16 +103,19 @@ def extract_text(tool_result: dict) -> str:
 
 
 def rows_from_result(tool_result: dict) -> list:
-    """Tenta extrair linhas estruturadas (lista de dicts) de um execute_sql."""
+    """Extrai linhas (lista de dicts) do resultado de execute_sql (formato columns/data) ou JSON."""
     text = extract_text(tool_result)
     try:
         data = json.loads(text)
     except Exception:
         return []
+    if isinstance(data, dict) and isinstance(data.get("columns"), list) and isinstance(data.get("data"), list):
+        cols = [c.get("name") if isinstance(c, dict) else c for c in data["columns"]]
+        return [dict(zip(cols, row)) for row in data["data"]]
     if isinstance(data, list):
         return [r for r in data if isinstance(r, dict)]
     if isinstance(data, dict):
-        for key in ("rows", "data", "results"):
+        for key in ("rows", "results"):
             if isinstance(data.get(key), list):
                 return [r for r in data[key] if isinstance(r, dict)]
     return []

@@ -1120,30 +1120,41 @@ async def nekt_test(admin: dict = Depends(get_admin_user)):
 
 @api_router.post("/integrations/nekt/sync-clients")
 async def nekt_sync_clients(admin: dict = Depends(get_admin_user)):
-    sql = "SELECT client_id, client_name, client_cnpj, client_group_name FROM clients LIMIT 1000"
+    sql = (
+        "SELECT customer_id, nome_fantasia AS client_name, cnpj AS client_cnpj, "
+        "grupo_nome AS client_group_name, segmento "
+        "FROM `vanguardamartech_raw.supabase_public_vw_cliente_entidade_vbot` "
+        "ORDER BY nome_fantasia LIMIT 1000"
+    )
     try:
-        result = await nekt.call_tool("execute_sql", {"sql": sql})
+        result = await nekt.call_tool("execute_sql", {"sql_query": sql})
         rows = nekt.rows_from_result(result)
     except nekt.NektError as e:
         raise HTTPException(status_code=400, detail=str(e))
     imported = 0
     for r in rows:
-        name = r.get("client_name") or r.get("client_id")
+        name = (r.get("client_name") or "").strip()
         if not name:
             continue
-        nid = str(r.get("client_id"))
+        nid = str(r.get("customer_id"))
         existing = await db.clients.find_one({"user_id": admin["user_id"], "nekt_id": nid})
-        doc = {"name": str(name), "niche": r.get("client_group_name") or "",
-               "cnpj": r.get("client_cnpj") or "", "nekt_id": nid, "source": "nekt"}
+        base = {
+            "name": name,
+            "segment": (r.get("segmento") or r.get("client_group_name") or "").strip(),
+            "cnpj": (r.get("client_cnpj") or "").strip(),
+            "group_name": (r.get("client_group_name") or "").strip(),
+            "nekt_id": nid, "source": "nekt",
+        }
         if existing:
-            await db.clients.update_one({"id": existing["id"]}, {"$set": doc})
+            await db.clients.update_one({"id": existing["id"]}, {"$set": base})
         else:
-            doc.update({"id": f"cli_{uuid.uuid4().hex[:12]}", "user_id": admin["user_id"],
-                        "created_at": datetime.now(timezone.utc).isoformat()})
-            await db.clients.insert_one(doc)
+            base.update({"id": f"cli_{uuid.uuid4().hex[:12]}", "user_id": admin["user_id"],
+                         "brand_color": "#FF2D40", "notes": "",
+                         "created_at": datetime.now(timezone.utc).isoformat()})
+            await db.clients.insert_one(base)
         imported += 1
     await log_activity(admin["user_id"], "integracao", f"Sincronização Nekt: {imported} clientes")
-    return {"ok": True, "imported": imported, "raw_preview": nekt.extract_text(result)[:500]}
+    return {"ok": True, "imported": imported}
 
 @api_router.get("/admin/users")
 async def admin_users(user: dict = Depends(get_admin_user)):

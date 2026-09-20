@@ -4,6 +4,7 @@ load_dotenv()
 import os
 import json
 import uuid
+import asyncio
 import base64
 import random
 import secrets
@@ -725,22 +726,48 @@ async def expand_image_prompt(brief: str, context: str) -> str:
         logger.error(f"Falha ao expandir prompt de imagem: {e}")
         return brief
 
-@api_router.post("/pieces/generate-image")
-async def generate_image(req: ImageGenRequest, user: dict = Depends(get_current_user)):
+async def _run_image_job(job_id: str, user_id: str, prompt: str, client_id: Optional[str]):
     try:
-        context = await build_brand_context(user["user_id"], req.client_id)
-        detailed = await expand_image_prompt(req.prompt, context)
+        context = await build_brand_context(user_id, client_id)
+        detailed = await expand_image_prompt(prompt, context)
         gen = OpenAIImageGeneration(api_key=EMERGENT_LLM_KEY)
         images = await gen.generate_images(
-            prompt=detailed,
-            model="gpt-image-1", number_of_images=1, quality="high",
+            prompt=detailed, model="gpt-image-1", number_of_images=1, quality="high",
         )
         b64 = base64.b64encode(images[0]).decode()
-        await log_activity(user["user_id"], "geracao", "Imagem gerada com IA (GPT Image 1)")
-        return {"image": f"data:image/png;base64,{b64}"}
+        await db.image_jobs.update_one({"id": job_id}, {"$set": {
+            "status": "done", "image": f"data:image/png;base64,{b64}",
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }})
+        await log_activity(user_id, "geracao", "Imagem gerada com IA (GPT Image 1)")
     except Exception as e:
-        logger.error(f"Erro ao gerar imagem: {e}")
-        raise HTTPException(status_code=500, detail="Falha ao gerar imagem com IA")
+        logger.error(f"Erro ao gerar imagem (job {job_id}): {e}")
+        await db.image_jobs.update_one({"id": job_id}, {"$set": {
+            "status": "error", "error": "Falha ao gerar imagem com IA",
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }})
+
+@api_router.post("/pieces/generate-image")
+async def generate_image(req: ImageGenRequest, user: dict = Depends(get_current_user)):
+    job_id = f"img_{uuid.uuid4().hex[:12]}"
+    now = datetime.now(timezone.utc).isoformat()
+    await db.image_jobs.insert_one({
+        "id": job_id, "user_id": user["user_id"], "status": "processing",
+        "image": None, "error": None, "created_at": now, "updated_at": now,
+    })
+    asyncio.create_task(_run_image_job(job_id, user["user_id"], req.prompt, req.client_id))
+    return {"job_id": job_id, "status": "processing"}
+
+@api_router.get("/pieces/image-job/{job_id}")
+async def image_job_status(job_id: str, user: dict = Depends(get_current_user)):
+    job = await db.image_jobs.find_one({"id": job_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
+    status = job["status"]
+    resp = {"status": status, "image": job.get("image"), "error": job.get("error")}
+    if status in ("done", "error"):
+        await db.image_jobs.delete_one({"id": job_id})
+    return resp
 
 @api_router.get("/pieces")
 async def list_pieces(user: dict = Depends(get_current_user)):

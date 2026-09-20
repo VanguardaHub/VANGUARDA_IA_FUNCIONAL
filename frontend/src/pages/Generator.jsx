@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
 import { Sparkles, Image as ImageIcon, Save, Loader2, Instagram, Linkedin, Mail, FileText, Megaphone, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,6 +41,7 @@ export default function Generator() {
   const [withImage, setWithImage] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
+  const [imageProgress, setImageProgress] = useState(0);
   const [content, setContent] = useState("");
   const [image, setImage] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -86,17 +88,39 @@ export default function Generator() {
       return;
     }
     setGeneratingImage(true);
+    setImageProgress(5);
+    const startedAt = Date.now();
+    const progTimer = setInterval(() => {
+      const elapsed = (Date.now() - startedAt) / 1000;
+      const target = Math.min(92, Math.round((elapsed / 60) * 92));
+      setImageProgress((p) => (target > p ? target : p));
+    }, 700);
     try {
       const { data } = await api.post("/pieces/generate-image", {
         prompt: `${form.prompt}. Marca: ${clients.find((c) => c.id === form.client_id)?.name || "genérica"}. Formato: ${PIECE_TYPES.find((t) => t.id === form.piece_type)?.label}.`,
         client_id: form.client_id || null,
       });
-      setImage(data.image);
-      toast.success("Imagem gerada!");
+      const jobId = data.job_id;
+      let done = false;
+      while (!done) {
+        await new Promise((r) => setTimeout(r, 3000));
+        const { data: st } = await api.get(`/pieces/image-job/${jobId}`);
+        if (st.status === "done") {
+          setImageProgress(100);
+          setImage(st.image);
+          toast.success("Imagem gerada!");
+          done = true;
+        } else if (st.status === "error") {
+          toast.error(st.error || "Falha ao gerar imagem");
+          done = true;
+        }
+      }
     } catch (err) {
       toast.error(formatApiError(err, "Falha ao gerar imagem"));
     } finally {
+      clearInterval(progTimer);
       setGeneratingImage(false);
+      setTimeout(() => setImageProgress(0), 800);
     }
   };
 
@@ -279,8 +303,13 @@ export default function Generator() {
                   </div>
                 )}
                 {generatingImage && (
-                  <div className="rounded-xl border border-slate-800 bg-white/[0.02] h-48 flex items-center justify-center">
-                    <Loader2 className="w-6 h-6 animate-spin text-red-400" />
+                  <div className="rounded-xl border border-slate-800 bg-white/[0.02] p-6 flex flex-col items-center justify-center gap-3" data-testid="image-progress">
+                    <div className="flex items-center gap-2 text-slate-300 text-sm">
+                      <Loader2 className="w-4 h-4 animate-spin text-red-400" />
+                      Gerando imagem em alta qualidade...
+                    </div>
+                    <Progress value={imageProgress} className="w-full h-2" data-testid="image-progress-bar" />
+                    <p className="text-xs text-slate-500">{imageProgress}% — pode levar até ~1 minuto. Pode continuar navegando.</p>
                   </div>
                 )}
                 <div

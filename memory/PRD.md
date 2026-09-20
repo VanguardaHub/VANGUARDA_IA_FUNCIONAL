@@ -111,6 +111,14 @@ Multi-tenant por usuário; geração de conteúdo com IA contextualizada por mar
 - Libs adicionadas: pypdf, python-docx, openpyxl.
 - Validado: curl (docx/xlsx/png ok, unsupported 400) + testing_agent frontend 100% (iteration_8.json).
 
-## Nekt MCP (banco de clientes) — PENDENTE DE CREDENCIAIS
+## Nekt MCP (banco de clientes) — PLUMBING PRONTO, AGUARDA ENDPOINT
 - Usuário quer: SINCRONIZAR clientes do Nekt + usar como CONTEXTO IA. Campos: client_id, client_name, client_cnpj, client_group_name.
-- BLOQUEADO: falta o ENDPOINT MCP do Nekt e o VALOR do token Bearer. Nekt = MCP server (data warehouse), JSON-RPC over Streamable HTTP, plano pago. Implementar cliente MCP no backend + sync job + injeção de contexto quando credenciais chegarem.
+- Token Bearer salvo em backend/.env (NEKT_MCP_TOKEN). NEKT_MCP_URL="" (VAZIO — precisa do endpoint do app.nekt.ai → Integrations → MCP Server).
+- Implementado: backend/nekt.py (cliente MCP JSON-RPC 2.0 sobre HTTP Streamable: initialize/tools/list/tools/call, parsing SSE+JSON). Endpoints admin: GET /api/integrations/nekt/status, POST /api/integrations/nekt/test (list_tools), POST /api/integrations/nekt/sync-clients (execute_sql SELECT client_id,client_name,client_cnpj,client_group_name FROM clients → upsert em db.clients com nekt_id/source).
+- Verificado local: status={configured:false,token_set:true}, test=400 claro (URL vazia). NÃO TESTADO end-to-end (falta endpoint). Tabela SQL 'clients' é um palpite — ajustar quando o endpoint permitir list_tables.
+- TODO ao receber endpoint: setar NEKT_MCP_URL, rodar /test para ver tools/shape, ajustar SQL/tabela, testar sync, adicionar UI (botão Sincronizar em Clientes) + injeção de contexto Nekt no gerador/bíblia.
+
+## 2026-06 — Nekt conectado + Imagem obedece Bíblia + Spec VJOB
+- Nekt CONECTADO: NEKT_MCP_URL="https://mcp.nekt.com/mcp". initialize 200 (serverInfo Nekt MCP 3.4.5, protocol 2025-11-25); /test lista 50+ tools (list_tables, get_table_preview, execute_sql, get_semantic_context, etc). Cliente backend/nekt.py funcional. Falta: descobrir a tabela real de clientes (rodar list_tables) e ligar UI de sync + contexto IA.
+- FIX Bíblia na imagem: generate-image agora recebe client_id e injeta build_brand_context (inclui docs da Bíblia) como DIRETRIZ OBRIGATÓRIA no prompt. Antes ignorava a Bíblia. Verificado via curl. Regra do usuário: sempre máxima qualidade + obedecer a Bíblia quando preenchida.
+- Spec VJOB (anexo ESPECIFICACAO_INTEGRACAO_VJOB): projeto GRANDE e faseado (Strangler; gateway read-only; sync incremental; camada Bronze/Silver/Gold via Nekt; painel admin; RBAC; auditoria). Fase 0 = mocks+flags+painel; conexão real só com credenciais do banco VJOB (mecanismo/host/user readonly/etc — pendentes). NÃO iniciado; aguardando aprovação de escopo/fase.

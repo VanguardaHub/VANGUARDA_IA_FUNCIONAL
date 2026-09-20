@@ -89,6 +89,7 @@ export default function Generator() {
     try {
       const { data } = await api.post("/pieces/generate-image", {
         prompt: `${form.prompt}. Marca: ${clients.find((c) => c.id === form.client_id)?.name || "genérica"}. Formato: ${PIECE_TYPES.find((t) => t.id === form.piece_type)?.label}.`,
+        client_id: form.client_id || null,
       });
       setImage(data.image);
       toast.success("Imagem gerada!");

@@ -33,6 +33,7 @@ import docx as docx_lib
 import openpyxl
 
 from payments import payments_router
+import nekt
 
 ROOT_DIR = Path(__file__).parent
 mongo_url = os.environ['MONGO_URL']
@@ -249,6 +250,7 @@ class PublishRequest(BaseModel):
 
 class ImageGenRequest(BaseModel):
     prompt: str
+    client_id: Optional[str] = None
 
 class BibleDocCreate(BaseModel):
     title: str
@@ -673,6 +675,13 @@ async def generate_piece(req: GeneratePieceRequest, user: dict = Depends(get_cur
 @api_router.post("/pieces/generate-image")
 async def generate_image(req: ImageGenRequest, user: dict = Depends(get_current_user)):
     try:
+        context = await build_brand_context(user["user_id"], req.client_id)
+        brand_rules = (
+            "\n\nDIRETRIZES OBRIGATÓRIAS DA MARCA (BÍBLIA) — siga à risca e NÃO fuja deste escopo:\n"
+            f"{context}\n"
+            "Respeite paleta de cores, tom, público-alvo, elementos e restrições descritos acima. "
+            "Não inclua nada fora dessas diretrizes."
+        ) if context else ""
         gen = OpenAIImageGeneration(api_key=EMERGENT_LLM_KEY)
         images = await gen.generate_images(
             prompt=(
@@ -681,6 +690,7 @@ async def generate_image(req: ImageGenRequest, user: dict = Depends(get_current_
                 "hierarquia visual clara e espaço equilibrado para o texto quando fizer sentido. "
                 "Acabamento de agência de publicidade, nítido e realista, sem aparência amadora e sem marcas d'água. "
                 f"Briefing do criativo: {req.prompt}"
+                f"{brand_rules}"
             ),
             model="gpt-image-1", number_of_images=1, quality="high",
         )
@@ -1094,6 +1104,46 @@ async def update_settings(req: SettingsUpdate, user: dict = Depends(get_current_
     await db.app_settings.update_one({"user_id": user["user_id"]}, {"$set": updates}, upsert=True)
     await log_activity(user["user_id"], "config", "Configurações atualizadas")
     return await db.app_settings.find_one({"user_id": user["user_id"]}, {"_id": 0})
+
+@api_router.get("/integrations/nekt/status")
+async def nekt_status(admin: dict = Depends(get_admin_user)):
+    return {"configured": nekt.is_configured(), "url_set": bool(nekt.NEKT_URL), "token_set": bool(nekt.NEKT_TOKEN)}
+
+@api_router.post("/integrations/nekt/test")
+async def nekt_test(admin: dict = Depends(get_admin_user)):
+    try:
+        tools = await nekt.list_tools()
+        names = [t.get("name") for t in tools if isinstance(t, dict)]
+        return {"ok": True, "tools": names}
+    except nekt.NektError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@api_router.post("/integrations/nekt/sync-clients")
+async def nekt_sync_clients(admin: dict = Depends(get_admin_user)):
+    sql = "SELECT client_id, client_name, client_cnpj, client_group_name FROM clients LIMIT 1000"
+    try:
+        result = await nekt.call_tool("execute_sql", {"sql": sql})
+        rows = nekt.rows_from_result(result)
+    except nekt.NektError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    imported = 0
+    for r in rows:
+        name = r.get("client_name") or r.get("client_id")
+        if not name:
+            continue
+        nid = str(r.get("client_id"))
+        existing = await db.clients.find_one({"user_id": admin["user_id"], "nekt_id": nid})
+        doc = {"name": str(name), "niche": r.get("client_group_name") or "",
+               "cnpj": r.get("client_cnpj") or "", "nekt_id": nid, "source": "nekt"}
+        if existing:
+            await db.clients.update_one({"id": existing["id"]}, {"$set": doc})
+        else:
+            doc.update({"id": f"cli_{uuid.uuid4().hex[:12]}", "user_id": admin["user_id"],
+                        "created_at": datetime.now(timezone.utc).isoformat()})
+            await db.clients.insert_one(doc)
+        imported += 1
+    await log_activity(admin["user_id"], "integracao", f"Sincronização Nekt: {imported} clientes")
+    return {"ok": True, "imported": imported, "raw_preview": nekt.extract_text(result)[:500]}
 
 @api_router.get("/admin/users")
 async def admin_users(user: dict = Depends(get_admin_user)):

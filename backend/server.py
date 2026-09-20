@@ -693,26 +693,46 @@ async def generate_piece(req: GeneratePieceRequest, user: dict = Depends(get_cur
     return StreamingResponse(event_stream(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
+async def expand_image_prompt(brief: str, context: str) -> str:
+    """Expande um briefing curto em um prompt de direção de arte rico e detalhado,
+    imitando o rewriting automático do ChatGPT. Usa LLM de texto (barato em créditos)."""
+    brand_block = f"\n\nBRAND GUIDELINES (must obey strictly — colors, tone, audience, restrictions):\n{context}" if context else ""
+    system = (
+        "You are a world-class advertising art director and prompt engineer for text-to-image models (gpt-image-1). "
+        "Turn a short brief into ONE single, richly detailed, production-ready image prompt in ENGLISH, the way ChatGPT auto-expands prompts. "
+        "Describe explicitly: main subject(s) and their exact appearance/wardrobe/expression, the scene and props, camera framing and composition, "
+        "lighting, a concrete cohesive color palette, mood, and rendering style (choose photographic, 3D, or illustration based on the brief). "
+        "If the brief implies a marketing poster, specify the EXACT on-image text (headline, subheadline, CTA) with clean, well-kerned typography and where it sits, "
+        "leaving balanced negative space for it. Add professional quality descriptors (ultra-detailed, sharp focus, high resolution, agency-grade finish, no watermark, no distorted text). "
+        "Obey the brand guidelines when provided. Output ONLY the final image prompt, no preamble, no quotes, no explanations."
+    )
+    user_msg = f"Brief (may be in Portuguese): {brief}{brand_block}"
+    try:
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"imgprompt-{uuid.uuid4().hex[:8]}",
+            system_message=system,
+        ).with_model("openai", "gpt-5.4-mini")
+        parts = []
+        async for ev in chat.stream_message(UserMessage(text=user_msg)):
+            if isinstance(ev, TextDelta):
+                parts.append(ev.content)
+            elif isinstance(ev, StreamDone):
+                break
+        expanded = "".join(parts).strip()
+        return expanded or brief
+    except Exception as e:
+        logger.error(f"Falha ao expandir prompt de imagem: {e}")
+        return brief
+
 @api_router.post("/pieces/generate-image")
 async def generate_image(req: ImageGenRequest, user: dict = Depends(get_current_user)):
     try:
         context = await build_brand_context(user["user_id"], req.client_id)
-        brand_rules = (
-            "\n\nDIRETRIZES OBRIGATÓRIAS DA MARCA (BÍBLIA) — siga à risca e NÃO fuja deste escopo:\n"
-            f"{context}\n"
-            "Respeite paleta de cores, tom, público-alvo, elementos e restrições descritos acima. "
-            "Não inclua nada fora dessas diretrizes."
-        ) if context else ""
+        detailed = await expand_image_prompt(req.prompt, context)
         gen = OpenAIImageGeneration(api_key=EMERGENT_LLM_KEY)
         images = await gen.generate_images(
-            prompt=(
-                "Crie um criativo publicitário profissional de altíssima qualidade, pronto para publicação em redes sociais. "
-                "Composição premium, iluminação cinematográfica, cores vibrantes e coerentes com a identidade da marca, "
-                "hierarquia visual clara e espaço equilibrado para o texto quando fizer sentido. "
-                "Acabamento de agência de publicidade, nítido e realista, sem aparência amadora e sem marcas d'água. "
-                f"Briefing do criativo: {req.prompt}"
-                f"{brand_rules}"
-            ),
+            prompt=detailed,
             model="gpt-image-1", number_of_images=1, quality="high",
         )
         b64 = base64.b64encode(images[0]).decode()

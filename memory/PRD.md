@@ -129,3 +129,9 @@ Multi-tenant por usuário; geração de conteúdo com IA contextualizada por mar
 - Clientes reais (133) e Bíblia estão só no PREVIEW; produção nunca rodou Sincronizar Nekt (source=nekt inexistente em prod).
 - CORREÇÃO DE CÓDIGO (aplicada, testada local, AGUARDA REPUBLICAÇÃO pela usuária): server.py ganhou _is_owner_email() + ensure_owner_admin(); qualquer login (Google/senha) do e-mail ADMIN_EMAIL é promovido a admin/agency automaticamente. Chamado em /auth/login, /auth/google/session (ambos os fluxos) e na criação de conta Google.
 - AÇÃO PENDENTE DO USUÁRIO em produção: (1) republicar; (2) logar com jussaracavalcante25@gmail.com; (3) Clientes -> Sincronizar Nekt (importa 133); (4) subir docs da Bíblia manualmente.
+
+## 2026-06 — Qualidade de imagem = nível ChatGPT (expansão de prompt)
+- PROBLEMA: imagem gerada no app tinha qualidade inferior à do ChatGPT (composição pobre/achatada) mesmo já usando gpt-image-1 quality=high. CAUSA: prompt enviado era genérico; o ChatGPT auto-expande o briefing em direção de arte detalhada.
+- FIX: nova função expand_image_prompt() (server.py) — usa LLM de TEXTO (gpt-5.4-mini, barato em créditos, NÃO gera imagens extras) para transformar o briefing curto + contexto da Bíblia num prompt de direção de arte rico em inglês (sujeitos, cena, props, composição, luz, paleta, estilo, tipografia on-image, quality descriptors, no watermark). generate-image passa esse prompt ao gpt-image-1 quality=high (1 imagem). Regra do usuário: economizar créditos.
+- Verificado com 1 geração (curl localhost, ~57s, 2.6MB): resultado rico com headline/subheadline/CTA integrados, obedecendo a Bíblia. Match com ChatGPT.
+- LIMITAÇÃO CONHECIDA (pré-existente): geração high leva ~55s; o proxy de ingress externo pode retornar 502 por timeout antes de concluir. Não afeta qualidade. Mitigação futura sugerida: geração assíncrona com polling (job + status) para evitar timeout do proxy.

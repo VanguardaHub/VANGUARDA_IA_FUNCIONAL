@@ -1,0 +1,19 @@
+{
+  "summary": "Frontend testing of Nekt sync flow on /clientes as admin. Login OK, sync-nekt-button visible next to 'Novo cliente', click shows 'Sincronizando...' state, success toast 'Nekt sincronizado: 129 clientes importados' appears in ~a few seconds, and 133 client cards render with name + segment (e.g. VANGUARDA COMUNICACAO / Agências de publicidade). All acceptance criteria met.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100%"},
+  "test_credentials": "admin jussaracavalcante25@gmail.com / Vanguarda@2026",
+  "seed_data_creation": "Nekt sync produced 129 imported clients (idempotent).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Nekt sync flow validated end-to-end. Cards render name + segment correctly. Total clients on page: 133 (129 nekt + 4 pre-existing)."
+}

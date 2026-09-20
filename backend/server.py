@@ -298,6 +298,20 @@ class AdminUserUpdate(BaseModel):
 
 # ---------------- Auth endpoints ----------------
 
+def _is_owner_email(email: str) -> bool:
+    owner = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    return bool(owner) and email.lower() == owner
+
+async def ensure_owner_admin(user: dict) -> dict:
+    """Garante que o e-mail do dono (ADMIN_EMAIL) sempre tenha papel de admin,
+    mesmo que a conta tenha sido criada via Google antes do seed rodar."""
+    if _is_owner_email(user["email"]) and user.get("role") != "admin":
+        await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"role": "admin", "plan": "agency"}})
+        user["role"] = "admin"
+        user["plan"] = "agency"
+    return user
+
+
 @api_router.post("/auth/register")
 async def register(req: RegisterRequest, response: Response):
     email = req.email.lower()
@@ -337,6 +351,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
         })
         raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
     await db.login_attempts.delete_many({"identifier": identifier})
+    user = await ensure_owner_admin(user)
     set_jwt_cookies(response, user)
     return public_user(user)
 
@@ -365,7 +380,9 @@ async def google_session(request: Request, response: Response):
             user_id = f"user_{uuid.uuid4().hex[:12]}"
             user = {
                 "user_id": user_id, "email": email, "name": gdata.get("name", email.split("@")[0]),
-                "picture": gdata.get("picture"), "role": "member", "plan": "trial",
+                "picture": gdata.get("picture"),
+                "role": "admin" if _is_owner_email(email) else "member",
+                "plan": "agency" if _is_owner_email(email) else "trial",
                 "token_version": 0, "created_at": datetime.now(timezone.utc).isoformat(),
             }
             await db.users.insert_one(user)
@@ -378,6 +395,7 @@ async def google_session(request: Request, response: Response):
             await db.users.update_one({"email": email}, {"$set": {"name": gdata.get("name", user["name"]), "picture": gdata.get("picture")}})
             user["name"] = gdata.get("name", user["name"])
             user["picture"] = gdata.get("picture")
+        user = await ensure_owner_admin(user)
         set_jwt_cookies(response, user)
         return public_user(user)
 
@@ -399,7 +417,9 @@ async def google_session(request: Request, response: Response):
         user_id = f"user_{uuid.uuid4().hex[:12]}"
         user = {
             "user_id": user_id, "email": email, "name": data.get("name", email.split("@")[0]),
-            "picture": data.get("picture"), "role": "member", "plan": "trial",
+            "picture": data.get("picture"),
+            "role": "admin" if _is_owner_email(email) else "member",
+            "plan": "agency" if _is_owner_email(email) else "trial",
             "token_version": 0, "created_at": datetime.now(timezone.utc).isoformat(),
         }
         await db.users.insert_one(user)
@@ -412,6 +432,7 @@ async def google_session(request: Request, response: Response):
         await db.users.update_one({"email": email}, {"$set": {"name": data.get("name", user["name"]), "picture": data.get("picture")}})
         user["name"] = data.get("name", user["name"])
         user["picture"] = data.get("picture")
+    user = await ensure_owner_admin(user)
     session_token = data["session_token"]
     await db.user_sessions.insert_one({
         "user_id": user["user_id"], "session_token": session_token,

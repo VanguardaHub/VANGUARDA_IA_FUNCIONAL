@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { api, streamSSE, formatApiError } from "@/lib/api";
+import { api, streamSSE, formatApiError, formatBRLPrecise } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,6 +46,17 @@ export default function Generator() {
   const [image, setImage] = useState(null);
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
+  const [genGroupId, setGenGroupId] = useState(() => crypto.randomUUID());
+  const [costs, setCosts] = useState({ copy: 0, refacao_texto: 0, imagem: 0, refacao_imagem: 0, total: 0 });
+
+  const addCost = (stage, brl) => {
+    if (brl == null || !stage) return;
+    setCosts((c) => {
+      const next = { ...c, [stage]: (c[stage] || 0) + brl };
+      next.total = next.copy + next.refacao_texto + next.imagem + next.refacao_imagem;
+      return next;
+    });
+  };
 
   useEffect(() => {
     api.get("/clients").then(({ data }) => setClients(data)).catch(() => {});
@@ -64,15 +75,16 @@ export default function Generator() {
     setContent("");
     setTitle("");
     let full = "";
-    await streamSSE("/pieces/generate", { ...form, client_id: form.client_id || null }, {
+    await streamSSE("/pieces/generate", { ...form, client_id: form.client_id || null, gen_group_id: genGroupId }, {
       onDelta: (d) => {
         full += d;
         setContent(full);
         const firstLine = full.split("\n").find((l) => l.trim());
         if (firstLine) setTitle(firstLine.replace(/^#+\s*/, "").replace(/^["']|["']$/g, "").trim().slice(0, 80));
       },
-      onDone: () => {
+      onDone: (p) => {
         setGenerating(false);
+        if (p) addCost(p.stage, p.cost_brl);
         toast.success("Peça gerada com sucesso!");
       },
       onError: (e) => {
@@ -99,6 +111,7 @@ export default function Generator() {
       const { data } = await api.post("/pieces/generate-image", {
         prompt: `${form.prompt}. Marca: ${clients.find((c) => c.id === form.client_id)?.name || "genérica"}. Formato: ${PIECE_TYPES.find((t) => t.id === form.piece_type)?.label}.`,
         client_id: form.client_id || null,
+        gen_group_id: genGroupId,
       });
       const jobId = data.job_id;
       let done = false;
@@ -108,6 +121,7 @@ export default function Generator() {
         if (st.status === "done") {
           setImageProgress(100);
           setImage(st.image);
+          addCost(st.stage, st.cost_brl);
           toast.success("Imagem gerada!");
           done = true;
         } else if (st.status === "error") {
@@ -137,6 +151,7 @@ export default function Generator() {
         content,
         image,
         status: "rascunho",
+        gen_group_id: genGroupId,
       });
       toast.success("Peça salva na biblioteca!");
       navigate("/pecas");
@@ -297,6 +312,20 @@ export default function Generator() {
               </div>
             ) : (
               <div className="flex-1 space-y-5">
+                {costs.total > 0 && (
+                  <div className="rounded-xl border border-slate-800 bg-white/[0.02] p-4" data-testid="generator-costs">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs uppercase tracking-wider text-slate-500 font-medium">Custo desta peça (IA)</span>
+                      <span className="font-display font-bold text-amber-300" data-testid="generator-cost-total">{formatBRLPrecise(costs.total)}</span>
+                    </div>
+                    <div className="space-y-1 text-xs text-slate-400">
+                      {costs.copy > 0 && <div className="flex justify-between"><span>Copy (texto)</span><span className="font-mono">{formatBRLPrecise(costs.copy)}</span></div>}
+                      {costs.refacao_texto > 0 && <div className="flex justify-between"><span>Refação de texto</span><span className="font-mono">{formatBRLPrecise(costs.refacao_texto)}</span></div>}
+                      {costs.imagem > 0 && <div className="flex justify-between"><span>Imagem</span><span className="font-mono">{formatBRLPrecise(costs.imagem)}</span></div>}
+                      {costs.refacao_imagem > 0 && <div className="flex justify-between"><span>Refação de imagem</span><span className="font-mono">{formatBRLPrecise(costs.refacao_imagem)}</span></div>}
+                    </div>
+                  </div>
+                )}
                 {image && (
                   <div className="rounded-xl overflow-hidden border border-slate-800 bg-[#0E0E11] flex items-center justify-center" data-testid="generated-image-preview">
                     <img src={image} alt="Criativo gerado por IA" className="w-full max-h-[75vh] object-contain" />

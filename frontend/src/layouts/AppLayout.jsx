@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard, Users, Sparkles, Layers, BookOpen, Megaphone,
-  ScrollText, Settings2, CreditCard, LogOut, Zap, Menu,
+  ScrollText, Settings2, CreditCard, LogOut, Zap, Menu, Receipt,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -19,6 +19,7 @@ const NAV = [
   { to: "/pecas", label: "Peças", icon: Layers, testid: "nav-pecas" },
   { to: "/biblia", label: "Bíblia", icon: BookOpen, testid: "nav-biblia" },
   { to: "/campanhas", label: "Campanhas", icon: Megaphone, testid: "nav-campanhas" },
+  { to: "/custos", label: "Custos", icon: Receipt, testid: "nav-custos" },
   { to: "/logs", label: "Logs & Alertas", icon: ScrollText, testid: "nav-logs" },
   { to: "/configuracoes", label: "Configurações", icon: Settings2, testid: "nav-configuracoes" },
   { to: "/planos", label: "Planos", icon: CreditCard, testid: "nav-planos" },

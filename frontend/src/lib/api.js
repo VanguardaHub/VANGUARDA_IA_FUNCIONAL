@@ -63,6 +63,12 @@ export function formatBRL(value) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
 }
 
+export function formatBRLPrecise(value) {
+  const v = Number(value) || 0;
+  const digits = v !== 0 && Math.abs(v) < 0.01 ? 4 : 2;
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(v);
+}
+
 export function formatNumber(value) {
   return new Intl.NumberFormat("pt-BR").format(value || 0);
 }

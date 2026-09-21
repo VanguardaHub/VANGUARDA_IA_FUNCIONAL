@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, formatApiError } from "@/lib/api";
+import { api, formatApiError, formatBRLPrecise } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -141,6 +141,11 @@ export default function Pieces() {
                     <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono border ${MODEL_BADGES[p.model] || MODEL_BADGES["gpt-5.4-mini"]}`}>
                       {p.model}
                     </span>
+                    {p.cost_brl != null && (
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-mono border bg-amber-500/10 text-amber-300 border-amber-500/20" data-testid={`piece-cost-${p.id}`}>
+                        {formatBRLPrecise(p.billable_brl ?? p.cost_brl)}{p.regen_count ? ` · ${p.regen_count} ref.` : ""}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-slate-500 mb-2">
                     {clientName(p.client_id)} · {TYPE_LABELS[p.piece_type] || p.piece_type} · {format(parseISO(p.created_at), "dd/MM/yyyy HH:mm")}
@@ -209,6 +214,23 @@ export default function Pieces() {
                 <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono border ${MODEL_BADGES[reviewPiece.model] || MODEL_BADGES["gpt-5.4-mini"]}`}>{reviewPiece.model}</span>
                 <span className="text-xs text-slate-500">{clientName(reviewPiece.client_id)} · {TYPE_LABELS[reviewPiece.piece_type] || reviewPiece.piece_type}</span>
               </div>
+
+              {reviewPiece.cost_breakdown?.length > 0 && (
+                <div className="rounded-lg border border-slate-800 bg-white/[0.02] p-3 mb-3 text-xs" data-testid="review-costs">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="uppercase tracking-wider text-slate-500">Custo de IA por etapa</span>
+                    <span className="lowercase-none">
+                      <span className="text-amber-300">Interno {formatBRLPrecise(reviewPiece.cost_brl)}</span>
+                      {reviewPiece.billable_brl != null && <span className="text-emerald-300"> · Faturar {formatBRLPrecise(reviewPiece.billable_brl)}</span>}
+                    </span>
+                  </div>
+                  <div className="space-y-0.5 text-slate-400">
+                    {reviewPiece.cost_breakdown.map((b, i) => (
+                      <div key={i} className="flex justify-between"><span>{b.label}</span><span className="font-mono">{formatBRLPrecise(b.cost_brl)}</span></div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {reviewPiece.image && (
                 <div className="rounded-xl overflow-hidden border border-slate-800 bg-[#0E0E11] flex items-center justify-center mb-4">

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { api, formatBRL, formatNumber } from "@/lib/api";
+import { api, formatBRL, formatBRLPrecise, formatNumber } from "@/lib/api";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
-import { Users, Sparkles, Megaphone, TrendingUp, MousePointerClick, DollarSign, Target, Activity } from "lucide-react";
+import { Users, Sparkles, Megaphone, TrendingUp, MousePointerClick, DollarSign, Target, Activity, Receipt } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -64,6 +64,11 @@ export default function Dashboard() {
         <KpiCard icon={Megaphone} label="Campanhas ativas" value={kpis.active_campaigns} sub={`de ${kpis.total_campaigns} no total`} testid="kpi-campaigns" />
         <KpiCard icon={Sparkles} label="Peças geradas" value={kpis.pieces} sub="com IA" testid="kpi-pieces" />
         <KpiCard icon={Activity} label="Impressões" value={formatNumber(kpis.impressions)} sub="alcance total" testid="kpi-impressions" />
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard icon={Receipt} label="Custo IA (30 dias)" value={formatBRLPrecise(kpis.ai_cost_brl)} sub="custo interno estimado" testid="kpi-ai-cost" accent="text-amber-400" />
+        <KpiCard icon={TrendingUp} label="A faturar (IA)" value={formatBRLPrecise(kpis.ai_billable_brl)} sub="com markup" testid="kpi-ai-billable" accent="text-emerald-400" />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4 md:gap-6">

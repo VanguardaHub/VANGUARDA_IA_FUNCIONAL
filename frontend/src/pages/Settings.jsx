@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Save, Loader2, Cpu, Building2, KeyRound, Users, UserPlus, Pencil, Trash2 } from "lucide-react";
+import { Save, Loader2, Cpu, Building2, KeyRound, Users, UserPlus, Pencil, Trash2, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 
@@ -57,6 +57,22 @@ export default function Settings() {
     setEditingUser(null);
     setUserForm(EMPTY_USER);
     setUserDialogOpen(true);
+  };
+
+  const updatePricing = (k, v) =>
+    setSettings((s) => ({ ...s, pricing: { ...s.pricing, [k]: v === "" ? "" : parseFloat(v) } }));
+  const updateModelPrice = (mid, k, v) =>
+    setSettings((s) => ({ ...s, pricing: { ...s.pricing, models: { ...s.pricing.models, [mid]: { ...s.pricing.models[mid], [k]: v === "" ? "" : parseFloat(v) } } } }));
+  const savePricing = async () => {
+    setSaving(true);
+    try {
+      await api.put("/settings", { pricing: settings.pricing });
+      toast.success("Tabela de custos salva");
+    } catch (err) {
+      toast.error(formatApiError(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const openEdit = (u) => {
@@ -119,6 +135,9 @@ export default function Settings() {
           <TabsTrigger value="integrations" data-testid="settings-tab-integrations"><KeyRound className="w-3.5 h-3.5 mr-1.5" /> Integrações</TabsTrigger>
           {user?.role === "admin" && (
             <TabsTrigger value="team" data-testid="settings-tab-team"><Users className="w-3.5 h-3.5 mr-1.5" /> Usuários</TabsTrigger>
+          )}
+          {user?.role === "admin" && (
+            <TabsTrigger value="pricing" data-testid="settings-tab-pricing"><Receipt className="w-3.5 h-3.5 mr-1.5" /> Custos & Preços</TabsTrigger>
           )}
         </TabsList>
 
@@ -271,6 +290,54 @@ export default function Settings() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </TabsContent>
+        )}
+
+        {user?.role === "admin" && (
+          <TabsContent value="pricing">
+            <div className="glass-card p-6 space-y-6 max-w-2xl" data-testid="pricing-panel">
+              <p className="text-sm text-slate-400">
+                Tabela editável usada para <strong>estimar</strong> o custo de IA por peça e por etapa. Valores em US$; convertidos para R$ pela taxa abaixo. O faturamento real da chave é em créditos Emergent.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Taxa US$ → R$</Label>
+                  <Input type="number" step="0.01" value={settings.pricing?.usd_to_brl ?? ""} onChange={(e) => updatePricing("usd_to_brl", e.target.value)}
+                    className="bg-[#0E0E11] border-slate-700" data-testid="pricing-usd-brl" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Markup (%)</Label>
+                  <Input type="number" step="1" value={settings.pricing?.markup_pct ?? ""} onChange={(e) => updatePricing("markup_pct", e.target.value)}
+                    className="bg-[#0E0E11] border-slate-700" data-testid="pricing-markup" />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-slate-300">Imagem — US$ por unidade (alta qualidade)</Label>
+                  <Input type="number" step="0.01" value={settings.pricing?.image_high_per_unit ?? ""} onChange={(e) => updatePricing("image_high_per_unit", e.target.value)}
+                    className="bg-[#0E0E11] border-slate-700" data-testid="pricing-image" />
+                </div>
+              </div>
+              {Object.entries(settings.pricing?.models || {}).map(([mid, mp]) => (
+                <div key={mid} className="border-t border-slate-800 pt-4" data-testid={`pricing-model-${mid}`}>
+                  <p className="text-sm font-medium mb-2 font-mono text-slate-300">{mid}</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Entrada (US$/1M tokens)</Label>
+                      <Input type="number" step="0.01" value={mp.input_per_m ?? ""} onChange={(e) => updateModelPrice(mid, "input_per_m", e.target.value)}
+                        className="bg-[#0E0E11] border-slate-700" data-testid={`pricing-${mid}-input`} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Saída (US$/1M tokens)</Label>
+                      <Input type="number" step="0.01" value={mp.output_per_m ?? ""} onChange={(e) => updateModelPrice(mid, "output_per_m", e.target.value)}
+                        className="bg-[#0E0E11] border-slate-700" data-testid={`pricing-${mid}-output`} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <Button onClick={savePricing} disabled={saving} className="bg-red-600 hover:bg-red-500 text-white" data-testid="settings-save-pricing">
+                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Salvar tabela de custos
+              </Button>
             </div>
           </TabsContent>
         )}

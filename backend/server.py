@@ -64,6 +64,80 @@ PIECE_TYPES = {
     "blog": "Artigo de blog / SEO",
 }
 
+# ---------------- Cost tracking (custo de IA por etapa) ----------------
+DEFAULT_PRICING = {
+    "usd_to_brl": 5.40,
+    "markup_pct": 100.0,
+    "models": {
+        "gpt-5.4-mini": {"input_per_m": 0.15, "output_per_m": 0.60},
+        "claude-sonnet-4-6": {"input_per_m": 3.00, "output_per_m": 15.00},
+    },
+    "image_high_per_unit": 0.19,
+}
+
+STAGE_LABELS = {
+    "copy": "Copy (texto)",
+    "refacao_texto": "Refação de texto",
+    "imagem": "Imagem",
+    "refacao_imagem": "Refação de imagem",
+}
+
+def _merge_pricing(user_pricing):
+    import copy as _copy
+    p = _copy.deepcopy(DEFAULT_PRICING)
+    if isinstance(user_pricing, dict):
+        for k in ("usd_to_brl", "markup_pct", "image_high_per_unit"):
+            if user_pricing.get(k) is not None:
+                try:
+                    p[k] = float(user_pricing[k])
+                except (TypeError, ValueError):
+                    pass
+        for mid, mp in (user_pricing.get("models") or {}).items():
+            if mid in p["models"] and isinstance(mp, dict):
+                for kk in ("input_per_m", "output_per_m"):
+                    if mp.get(kk) is not None:
+                        try:
+                            p["models"][mid][kk] = float(mp[kk])
+                        except (TypeError, ValueError):
+                            pass
+    return p
+
+async def get_pricing(user_id: str) -> dict:
+    s = await db.app_settings.find_one({"user_id": user_id}, {"_id": 0, "pricing": 1})
+    return _merge_pricing((s or {}).get("pricing"))
+
+def _text_cost_usd(model: str, input_tokens: int, output_tokens: int, pricing: dict) -> float:
+    mp = pricing["models"].get(model, DEFAULT_PRICING["models"]["gpt-5.4-mini"])
+    return (input_tokens / 1_000_000) * mp["input_per_m"] + (output_tokens / 1_000_000) * mp["output_per_m"]
+
+async def record_cost(user_id, gen_group_id, stage, model, input_tokens=0, output_tokens=0, images=0, client_id=None, extra_usd=0.0):
+    pricing = await get_pricing(user_id)
+    usd = float(extra_usd)
+    if input_tokens or output_tokens:
+        usd += _text_cost_usd(model, input_tokens, output_tokens, pricing)
+    if images:
+        usd += images * pricing["image_high_per_unit"]
+    brl = round(usd * pricing["usd_to_brl"], 4)
+    doc = {
+        "id": f"cost_{uuid.uuid4().hex[:12]}", "user_id": user_id,
+        "gen_group_id": gen_group_id, "piece_id": None, "client_id": client_id,
+        "stage": stage, "model": model,
+        "input_tokens": int(input_tokens), "output_tokens": int(output_tokens),
+        "images": int(images), "cost_usd": round(usd, 6), "cost_brl": brl,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.ai_costs.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+async def stage_for(user_id, gen_group_id, kind: str) -> str:
+    base = ["copy", "refacao_texto"] if kind == "texto" else ["imagem", "refacao_imagem"]
+    if not gen_group_id:
+        return base[0]
+    existing = await db.ai_costs.count_documents({"user_id": user_id, "gen_group_id": gen_group_id, "stage": {"$in": base}})
+    return base[0] if existing == 0 else base[1]
+
+
 # ---------------- Auth helpers ----------------
 
 def hash_password(password: str) -> str:
@@ -230,6 +304,7 @@ class GeneratePieceRequest(BaseModel):
     model: str = "gpt-5.4-mini"
     tone: str = "profissional"
     prompt: str
+    gen_group_id: Optional[str] = None
 
 class PieceSaveRequest(BaseModel):
     client_id: Optional[str] = None
@@ -240,6 +315,7 @@ class PieceSaveRequest(BaseModel):
     content: str
     image: Optional[str] = None
     status: str = "rascunho"
+    gen_group_id: Optional[str] = None
 
 class PieceUpdateRequest(BaseModel):
     title: Optional[str] = None
@@ -252,6 +328,7 @@ class PublishRequest(BaseModel):
 class ImageGenRequest(BaseModel):
     prompt: str
     client_id: Optional[str] = None
+    gen_group_id: Optional[str] = None
 
 class BibleDocCreate(BaseModel):
     title: str
@@ -283,6 +360,7 @@ class SettingsUpdate(BaseModel):
     default_tone: Optional[str] = None
     agency_name: Optional[str] = None
     meta_connected: Optional[bool] = None
+    pricing: Optional[dict] = None
 
 class AdminUserCreate(BaseModel):
     name: str
@@ -569,6 +647,11 @@ async def dashboard(user: dict = Depends(get_current_user)):
     series = sorted(daily.values(), key=lambda x: x["date"])
     recent_activity = await db.activity_logs.find({"user_id": uid}, {"_id": 0}).sort("created_at", -1).to_list(8)
     recent_pieces = await db.pieces.find({"user_id": uid}, {"_id": 0, "image": 0}).sort("created_at", -1).to_list(5)
+    since_30d = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    ai_cost_docs = await db.ai_costs.find({"user_id": uid, "created_at": {"$gte": since_30d}}, {"_id": 0, "cost_brl": 1}).to_list(20000)
+    ai_cost_brl = round(sum(c["cost_brl"] for c in ai_cost_docs), 4)
+    pricing = await get_pricing(uid)
+    mk = 1 + pricing["markup_pct"] / 100
     return {
         "kpis": {
             "clients": clients_count, "pieces": pieces_count,
@@ -576,6 +659,7 @@ async def dashboard(user: dict = Depends(get_current_user)):
             "spend": round(total_spend, 2), "impressions": total_impressions,
             "clicks": total_clicks, "conversions": total_conversions,
             "ctr": ctr, "roas": roas, "revenue": round(revenue, 2),
+            "ai_cost_brl": ai_cost_brl, "ai_billable_brl": round(ai_cost_brl * mk, 4),
         },
         "series": series,
         "recent_activity": recent_activity,
@@ -680,13 +764,19 @@ async def generate_piece(req: GeneratePieceRequest, user: dict = Depends(get_cur
                 session_id=f"piece-{uuid.uuid4().hex[:8]}",
                 system_message=system,
             ).with_model(model_cfg["provider"], model_cfg["model"])
+            in_tok = out_tok = 0
             async for ev in chat.stream_message(UserMessage(text=prompt)):
                 if isinstance(ev, TextDelta):
                     yield f"data: {json.dumps({'delta': ev.content})}\n\n"
                 elif isinstance(ev, StreamDone):
+                    if ev.usage:
+                        in_tok = ev.usage.input_tokens or 0
+                        out_tok = ev.usage.output_tokens or 0
                     break
+            stage = await stage_for(user["user_id"], req.gen_group_id, "texto")
+            cost = await record_cost(user["user_id"], req.gen_group_id, stage, req.model, in_tok, out_tok, client_id=req.client_id)
             await log_activity(user["user_id"], "geracao", f"Peça gerada com {model_cfg['label']} ({PIECE_TYPES[req.piece_type]})")
-            yield f"data: {json.dumps({'done': True})}\n\n"
+            yield f"data: {json.dumps({'done': True, 'stage': stage, 'cost_brl': cost['cost_brl'], 'tokens': in_tok + out_tok})}\n\n"
         except Exception as e:
             logger.error(f"Erro na geração: {e}")
             yield f"data: {json.dumps({'error': 'Falha na geração com IA. Tente novamente.'})}\n\n"
@@ -715,28 +805,37 @@ async def expand_image_prompt(brief: str, context: str) -> str:
             system_message=system,
         ).with_model("openai", "gpt-5.4-mini")
         parts = []
+        in_tok = out_tok = 0
         async for ev in chat.stream_message(UserMessage(text=user_msg)):
             if isinstance(ev, TextDelta):
                 parts.append(ev.content)
             elif isinstance(ev, StreamDone):
+                if ev.usage:
+                    in_tok = ev.usage.input_tokens or 0
+                    out_tok = ev.usage.output_tokens or 0
                 break
         expanded = "".join(parts).strip()
-        return expanded or brief
+        return (expanded or brief, in_tok, out_tok)
     except Exception as e:
         logger.error(f"Falha ao expandir prompt de imagem: {e}")
-        return brief
+        return (brief, 0, 0)
 
-async def _run_image_job(job_id: str, user_id: str, prompt: str, client_id: Optional[str]):
+async def _run_image_job(job_id: str, user_id: str, prompt: str, client_id: Optional[str], gen_group_id: Optional[str] = None):
     try:
+        pricing = await get_pricing(user_id)
         context = await build_brand_context(user_id, client_id)
-        detailed = await expand_image_prompt(prompt, context)
+        detailed, ein, eout = await expand_image_prompt(prompt, context)
+        exp_usd = _text_cost_usd("gpt-5.4-mini", ein, eout, pricing)
         gen = OpenAIImageGeneration(api_key=EMERGENT_LLM_KEY)
         images = await gen.generate_images(
             prompt=detailed, model="gpt-image-1", number_of_images=1, quality="high",
         )
         b64 = base64.b64encode(images[0]).decode()
+        stage = await stage_for(user_id, gen_group_id, "imagem")
+        cost = await record_cost(user_id, gen_group_id, stage, "gpt-image-1", images=1, client_id=client_id, extra_usd=exp_usd)
         await db.image_jobs.update_one({"id": job_id}, {"$set": {
             "status": "done", "image": f"data:image/png;base64,{b64}",
+            "cost_brl": cost["cost_brl"], "stage": stage,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }})
         await log_activity(user_id, "geracao", "Imagem gerada com IA (GPT Image 1)")
@@ -755,7 +854,7 @@ async def generate_image(req: ImageGenRequest, user: dict = Depends(get_current_
         "id": job_id, "user_id": user["user_id"], "status": "processing",
         "image": None, "error": None, "created_at": now, "updated_at": now,
     })
-    asyncio.create_task(_run_image_job(job_id, user["user_id"], req.prompt, req.client_id))
+    asyncio.create_task(_run_image_job(job_id, user["user_id"], req.prompt, req.client_id, req.gen_group_id))
     return {"job_id": job_id, "status": "processing"}
 
 @api_router.get("/pieces/image-job/{job_id}")
@@ -764,14 +863,21 @@ async def image_job_status(job_id: str, user: dict = Depends(get_current_user)):
     if not job:
         raise HTTPException(status_code=404, detail="Job não encontrado")
     status = job["status"]
-    resp = {"status": status, "image": job.get("image"), "error": job.get("error")}
+    resp = {"status": status, "image": job.get("image"), "error": job.get("error"),
+            "cost_brl": job.get("cost_brl"), "stage": job.get("stage")}
     if status in ("done", "error"):
         await db.image_jobs.delete_one({"id": job_id})
     return resp
 
 @api_router.get("/pieces")
 async def list_pieces(user: dict = Depends(get_current_user)):
-    return await db.pieces.find({"user_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    pieces = await db.pieces.find({"user_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    pricing = await get_pricing(user["user_id"])
+    mk = 1 + pricing["markup_pct"] / 100
+    for p in pieces:
+        if p.get("cost_brl") is not None:
+            p["billable_brl"] = round(p["cost_brl"] * mk, 4)
+    return pieces
 
 @api_router.post("/pieces")
 async def save_piece(req: PieceSaveRequest, user: dict = Depends(get_current_user)):
@@ -783,6 +889,25 @@ async def save_piece(req: PieceSaveRequest, user: dict = Depends(get_current_use
     await db.pieces.insert_one(doc)
     await log_activity(user["user_id"], "peca", f"Peça salva: {req.title}")
     doc.pop("_id", None)
+    if req.gen_group_id:
+        uid = user["user_id"]
+        await db.ai_costs.update_many(
+            {"user_id": uid, "gen_group_id": req.gen_group_id, "piece_id": None},
+            {"$set": {"piece_id": doc["id"], "client_id": req.client_id}},
+        )
+        costs = await db.ai_costs.find({"piece_id": doc["id"], "user_id": uid}, {"_id": 0}).to_list(100)
+        total_brl = round(sum(c["cost_brl"] for c in costs), 4)
+        regen = sum(1 for c in costs if c["stage"] in ("refacao_texto", "refacao_imagem"))
+        breakdown = [{"stage": c["stage"], "label": STAGE_LABELS.get(c["stage"], c["stage"]),
+                      "cost_brl": c["cost_brl"], "model": c["model"]} for c in costs]
+        await db.pieces.update_one({"id": doc["id"]}, {"$set": {
+            "gen_group_id": req.gen_group_id, "cost_brl": total_brl,
+            "regen_count": regen, "cost_breakdown": breakdown,
+        }})
+        pricing = await get_pricing(uid)
+        mk = 1 + pricing["markup_pct"] / 100
+        doc.update({"cost_brl": total_brl, "regen_count": regen, "cost_breakdown": breakdown,
+                    "billable_brl": round(total_brl * mk, 4)})
     return doc
 
 @api_router.put("/pieces/{piece_id}")
@@ -1162,6 +1287,7 @@ async def get_settings(user: dict = Depends(get_current_user)):
              "default_tone": "profissional", "agency_name": "", "meta_connected": False}
         await db.app_settings.insert_one(dict(s))
     s["available_models"] = [{"id": k, **{kk: vv for kk, vv in v.items() if kk != "provider"}} for k, v in AI_MODELS.items()]
+    s["pricing"] = _merge_pricing(s.get("pricing"))
     return s
 
 @api_router.put("/settings")
@@ -1172,6 +1298,33 @@ async def update_settings(req: SettingsUpdate, user: dict = Depends(get_current_
     await db.app_settings.update_one({"user_id": user["user_id"]}, {"$set": updates}, upsert=True)
     await log_activity(user["user_id"], "config", "Configurações atualizadas")
     return await db.app_settings.find_one({"user_id": user["user_id"]}, {"_id": 0})
+
+@api_router.get("/reports/costs")
+async def cost_report(user: dict = Depends(get_current_user)):
+    uid = user["user_id"]
+    pricing = await get_pricing(uid)
+    mk = 1 + pricing["markup_pct"] / 100
+    costs = await db.ai_costs.find({"user_id": uid}, {"_id": 0}).to_list(50000)
+    clients = {c["id"]: c["name"] for c in await db.clients.find({"user_id": uid}, {"_id": 0, "id": 1, "name": 1}).to_list(1000)}
+    agg = {}
+    for c in costs:
+        key = c.get("client_id") or "none"
+        a = agg.setdefault(key, {"client_id": key, "client_name": clients.get(c.get("client_id"), "Sem cliente"),
+                                 "cost_brl": 0.0, "pieces": set(), "stages": 0, "refacoes": 0})
+        a["cost_brl"] += c["cost_brl"]
+        if c.get("piece_id"):
+            a["pieces"].add(c["piece_id"])
+        a["stages"] += 1
+        if c["stage"] in ("refacao_texto", "refacao_imagem"):
+            a["refacoes"] += 1
+    rows = [{"client_id": a["client_id"], "client_name": a["client_name"],
+             "cost_brl": round(a["cost_brl"], 4), "billable_brl": round(a["cost_brl"] * mk, 4),
+             "pieces": len(a["pieces"]), "refacoes": a["refacoes"], "stages": a["stages"]}
+            for a in agg.values()]
+    rows.sort(key=lambda x: -x["cost_brl"])
+    total_cost = round(sum(r["cost_brl"] for r in rows), 4)
+    return {"rows": rows, "total_cost_brl": total_cost, "total_billable_brl": round(total_cost * mk, 4),
+            "markup_pct": pricing["markup_pct"]}
 
 @api_router.get("/integrations/nekt/status")
 async def nekt_status(admin: dict = Depends(get_admin_user)):

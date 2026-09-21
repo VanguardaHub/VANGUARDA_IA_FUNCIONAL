@@ -76,7 +76,7 @@ export default function Clients() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="font-display font-extrabold tracking-tight text-3xl">Clientes</h1>
-          <p className="text-sm text-slate-400 mt-1">Carteira de clientes da agência</p>
+          <p className="text-sm text-slate-400 mt-1">Carteira de clientes da agência{clients.length > 0 && <span className="text-slate-500"> · {clients.length} {clients.length === 1 ? "cliente" : "clientes"}</span>}</p>
         </div>
         <div className="flex gap-3">
           {user?.role === "admin" && (

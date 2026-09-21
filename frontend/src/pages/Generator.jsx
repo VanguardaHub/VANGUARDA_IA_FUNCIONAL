@@ -269,11 +269,11 @@ export default function Generator() {
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <h3 className="font-display font-semibold text-lg">Preview</h3>
               <div className="flex gap-2">
-                {withImage && content && !image && (
+                {withImage && content && (
                   <Button size="sm" variant="outline" onClick={generateImage} disabled={generatingImage}
                     className="border-slate-700 bg-white/5 hover:bg-white/10 text-slate-200" data-testid="generate-image-button">
                     {generatingImage ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5 mr-1.5" />}
-                    {generatingImage ? "Gerando imagem..." : "Gerar imagem"}
+                    {generatingImage ? "Gerando imagem..." : image ? "Refazer imagem" : "Gerar imagem"}
                   </Button>
                 )}
                 {content && (

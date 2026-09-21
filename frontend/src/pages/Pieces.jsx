@@ -168,7 +168,7 @@ export default function Pieces() {
                       <CalendarClock className="w-3.5 h-3.5 mr-1" /> Agendar
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" onClick={() => remove(p.id)} className="border-slate-700 bg-white/5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 hover:border-rose-500/30" data-testid={`piece-delete-${p.id}`}>
+                  <Button size="sm" variant="outline" onClick={() => remove(p.id)} title="Excluir peça" aria-label="Excluir peça" className="border-slate-700 bg-white/5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 hover:border-rose-500/30" data-testid={`piece-delete-${p.id}`}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -261,7 +261,7 @@ export default function Pieces() {
                         <CalendarClock className="w-3.5 h-3.5 mr-1.5" /> Agendar
                       </Button>
                     )}
-                    <Button variant="outline" onClick={() => remove(reviewPiece.id)} className="border-slate-700 bg-white/5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 hover:border-rose-500/30 ml-auto" data-testid="review-delete-button">
+                    <Button variant="outline" onClick={() => remove(reviewPiece.id)} title="Excluir peça" aria-label="Excluir peça" className="border-slate-700 bg-white/5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 hover:border-rose-500/30 ml-auto" data-testid="review-delete-button">
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </>

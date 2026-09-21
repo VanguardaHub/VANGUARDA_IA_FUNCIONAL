@@ -144,3 +144,9 @@ Multi-tenant por usuário; geração de conteúdo com IA contextualizada por mar
 ## 2026-06 — Campo de pesquisa em Clientes + análise de usabilidade
 - Clients.jsx: adicionado campo de busca (data-testid=clients-search-input) que filtra client-side por name, segment, cnpj, group_name, contact_name, contact_email. Mostra contador "X de Y" e estado "nenhum encontrado" (clients-no-results). Essencial com 133 clientes. Frontend compiled successfully.
 - OBS: verificação visual via screenshot tool ficou inconclusiva (tool exibia a tela de login pós-navegação); validado por compilação + leitura de código. Lógica é filtro puro no front.
+
+## 2026-06 — Correções de usabilidade (frontend-only)
+- AppLayout: menu mobile refeito. Antes era uma fileira de 9 ícones sem rótulo em overflow-x. Agora é um botão hambúrguer (data-testid=mobile-menu-trigger) que abre um Sheet lateral (data-testid=mobile-menu) com itens rotulados + logo + botão Sair (mobile-logout). NavLinks mantêm testid `${testid}-mobile`.
+- Generator: botão de imagem agora permite REFAZER (aparece mesmo com imagem gerada; label "Refazer imagem"). Antes sumia após a 1a geração.
+- Acessibilidade/clareza: title + aria-label adicionados em botões só-ícone: excluir peça (lista e modal), agendar campanha, sincronizar Meta Ads (linha da tabela), remover documento da Bíblia, remover regra de alerta.
+- Verificação: frontend "Compiled successfully". Validação visual das telas autenticadas ficou limitada pelo tool de screenshot (captura só a tela de login). Edições são triviais e compilaram.

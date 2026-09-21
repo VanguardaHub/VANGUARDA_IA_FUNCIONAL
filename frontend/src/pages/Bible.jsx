@@ -234,7 +234,7 @@ export default function Bible() {
                           {d.source_file && (<span className="inline-flex items-center gap-1 text-slate-500"><Paperclip className="w-3 h-3" /> {d.source_file}</span>)}
                         </p>
                       </div>
-                      <button onClick={() => removeDoc(d.id)} data-testid={`bible-doc-delete-${d.id}`}
+                      <button onClick={() => removeDoc(d.id)} data-testid={`bible-doc-delete-${d.id}`} title="Remover documento" aria-label="Remover documento"
                         className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-lg hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 shrink-0">
                         <Trash2 className="w-4 h-4" />
                       </button>

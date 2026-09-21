@@ -1,14 +1,16 @@
+import { useState } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard, Users, Sparkles, Layers, BookOpen, Megaphone,
-  ScrollText, Settings2, CreditCard, LogOut, Zap,
+  ScrollText, Settings2, CreditCard, LogOut, Zap, Menu,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, testid: "nav-dashboard" },
@@ -27,6 +29,7 @@ const PLAN_LABELS = { trial: "Trial", starter: "Starter", pro: "Pro", agency: "E
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = async () => {
     navigate("/", { replace: true });
@@ -79,16 +82,39 @@ export default function AppLayout() {
 
       <div className="lg:pl-64 flex flex-col min-h-screen">
         <header className="sticky top-0 z-30 h-16 backdrop-blur-xl bg-[#0B0B0D]/80 border-b border-slate-800/60 px-6 flex items-center justify-between" data-testid="app-header">
-          <nav className="flex lg:hidden gap-1 overflow-x-auto">
-            {NAV.map(({ to, icon: Icon, testid }) => (
-              <NavLink key={to} to={to} data-testid={`${testid}-mobile`}
-                className={({ isActive }) =>
-                  `p-2 rounded-lg transition-colors ${isActive ? "bg-red-500/10 text-red-300" : "text-slate-400 hover:text-slate-200"}`
-                }>
-                <Icon className="w-5 h-5" />
-              </NavLink>
-            ))}
-          </nav>
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <button className="lg:hidden p-2 -ml-2 rounded-lg text-slate-200 hover:bg-white/5 transition-colors" data-testid="mobile-menu-trigger" aria-label="Abrir menu de navegação">
+                <Menu className="w-5 h-5" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 bg-[#0E0E11] border-slate-800 p-0 text-slate-200" data-testid="mobile-menu">
+              <div className="h-16 flex items-center gap-3 px-6 border-b border-slate-800/60">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center">
+                  <Zap className="w-4 h-4 text-white" />
+                </div>
+                <span className="font-display font-extrabold text-lg tracking-tight">Vanguarda<span className="text-red-400">.IA</span></span>
+              </div>
+              <nav className="py-4 px-3 space-y-1">
+                {NAV.map(({ to, label, icon: Icon, testid }) => (
+                  <NavLink key={to} to={to} onClick={() => setMobileOpen(false)} data-testid={`${testid}-mobile`}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                        isActive ? "bg-red-500/10 text-red-300 border border-red-500/20" : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] border border-transparent"
+                      }`
+                    }>
+                    <Icon className="w-4 h-4" /> {label}
+                  </NavLink>
+                ))}
+              </nav>
+              <div className="px-3 mt-1 pt-3 border-t border-slate-800/60">
+                <button onClick={() => { setMobileOpen(false); handleLogout(); }} data-testid="mobile-logout"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-rose-400 hover:bg-rose-500/10 transition-colors">
+                  <LogOut className="w-4 h-4" /> Sair
+                </button>
+              </div>
+            </SheetContent>
+          </Sheet>
           <div className="hidden lg:block">
             <p className="text-xs text-slate-500 font-mono">vanguarda.ia / workspace</p>
           </div>

@@ -187,7 +187,7 @@ export default function Logs() {
                         {METRIC_LABELS[r.metric]} {r.operator === "gt" ? ">" : "<"} {r.threshold}
                       </p>
                     </div>
-                    <button onClick={() => removeRule(r.id)} data-testid={`rule-delete-${r.id}`}
+                    <button onClick={() => removeRule(r.id)} data-testid={`rule-delete-${r.id}`} title="Remover regra" aria-label="Remover regra"
                       className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-rose-500/10 text-slate-500 hover:text-rose-400">
                       <Trash2 className="w-4 h-4" />
                     </button>

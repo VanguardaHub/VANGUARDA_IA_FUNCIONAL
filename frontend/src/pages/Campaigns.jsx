@@ -224,6 +224,7 @@ export default function Campaigns() {
                   <Send className="w-3.5 h-3.5 mr-1.5" /> Publicar
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => { setScheduleTarget(c.id); setScheduleAt(""); }}
+                  title="Agendar publicação" aria-label="Agendar publicação"
                   className="border-slate-700 bg-white/5 hover:bg-white/10 text-slate-200" data-testid={`campaign-schedule-${c.id}`}>
                   <CalendarClock className="w-3.5 h-3.5" />
                 </Button>
@@ -270,7 +271,7 @@ export default function Campaigns() {
                   <td className="p-4 text-right font-mono">{c.totals.ctr}%</td>
                   <td className="p-4 text-right font-mono">{c.totals.roas}x</td>
                   <td className="p-4 text-right">
-                    <Button size="sm" variant="ghost" onClick={() => sync(c.id)} disabled={syncing === c.id} data-testid={`campaign-sync-row-${c.id}`}>
+                    <Button size="sm" variant="ghost" onClick={() => sync(c.id)} disabled={syncing === c.id} title="Sincronizar Meta Ads" aria-label="Sincronizar Meta Ads" data-testid={`campaign-sync-row-${c.id}`}>
                       {syncing === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                     </Button>
                   </td>

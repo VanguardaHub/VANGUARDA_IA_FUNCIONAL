@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Users, Sparkles, Trash2, ArrowRight, RefreshCw, Loader2 } from "lucide-react";
+import { Plus, Users, Sparkles, Trash2, ArrowRight, RefreshCw, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Clients() {
@@ -17,6 +17,7 @@ export default function Clients() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [query, setQuery] = useState("");
   const [form, setForm] = useState({ name: "", segment: "", contact_name: "", contact_email: "", brand_color: "#FF2D40", notes: "" });
 
   const load = () => api.get("/clients").then(({ data }) => setClients(data)).catch(() => {});
@@ -60,6 +61,15 @@ export default function Clients() {
       setSyncing(false);
     }
   };
+
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? clients.filter((c) =>
+        [c.name, c.segment, c.cnpj, c.group_name, c.contact_name, c.contact_email]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(q))
+      )
+    : clients;
 
   return (
     <div className="space-y-6 animate-fade-up" data-testid="clients-page">
@@ -128,14 +138,37 @@ export default function Clients() {
         </div>
       </div>
 
+      {clients.length > 0 && (
+        <div className="relative max-w-md" data-testid="clients-search">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Pesquisar por nome, segmento, CNPJ..."
+            className="pl-9 bg-[#0E0E11] border-slate-700 rounded-full"
+            data-testid="clients-search-input"
+          />
+          {q && (
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-500" data-testid="clients-search-count">
+              {filtered.length} de {clients.length}
+            </span>
+          )}
+        </div>
+      )}
+
       {clients.length === 0 ? (
         <div className="glass-card p-12 text-center" data-testid="clients-empty">
           <Users className="w-10 h-10 text-slate-600 mx-auto mb-4" />
           <p className="text-slate-400">Nenhum cliente ainda. Cadastre o primeiro para começar.</p>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="glass-card p-12 text-center" data-testid="clients-no-results">
+          <Search className="w-10 h-10 text-slate-600 mx-auto mb-4" />
+          <p className="text-slate-400">Nenhum cliente encontrado para "{query}".</p>
+        </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {clients.map((c) => (
+          {filtered.map((c) => (
             <div key={c.id} className="glass-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-700 group" data-testid={`client-card-${c.id}`}>
               <div className="flex items-start justify-between mb-4">
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center font-display font-bold text-white text-lg"

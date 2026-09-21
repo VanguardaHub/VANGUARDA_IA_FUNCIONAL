@@ -140,3 +140,7 @@ Multi-tenant por usuário; geração de conteúdo com IA contextualizada por mar
 - Backend: POST /api/pieces/generate-image agora cria job em db.image_jobs (status processing) e dispara asyncio.create_task(_run_image_job) — retorna {job_id, status} na hora (sem esperar ~55s). GET /api/pieces/image-job/{job_id} devolve status/image/error; ao ficar done/error o job é deletado (evita bloat de base64). expand_image_prompt continua na geração.
 - Frontend Generator.jsx: generateImage faz POST -> polling a cada 3s no job até done/error; barra de Progress (shadcn) com % simulado subindo até 92% em ~60s e 100% ao concluir. data-testid: image-progress, image-progress-bar. Usuário pode navegar durante a geração.
 - Verificado ponta a ponta via URL EXTERNA: POST 200 imediato, polling entrega imagem 3.7MB sem 502. Frontend compila (login OK).
+
+## 2026-06 — Campo de pesquisa em Clientes + análise de usabilidade
+- Clients.jsx: adicionado campo de busca (data-testid=clients-search-input) que filtra client-side por name, segment, cnpj, group_name, contact_name, contact_email. Mostra contador "X de Y" e estado "nenhum encontrado" (clients-no-results). Essencial com 133 clientes. Frontend compiled successfully.
+- OBS: verificação visual via screenshot tool ficou inconclusiva (tool exibia a tela de login pós-navegação); validado por compilação + leitura de código. Lógica é filtro puro no front.

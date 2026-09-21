@@ -1,0 +1,46 @@
+{
+  "summary": "Full backend + frontend testing of the new AI-cost feature (custo de IA por peça/refação/etapa). All requested flows PASS end-to-end. 9/9 backend pytest tests green; all frontend testids exist and function as spec'd.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_ai_costs.py",
+    "/app/test_reports/pytest/ai_costs.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py list_pieces: only computes billable_brl in-memory (not persisted). Fine since it uses current pricing at read-time — this is actually the correct behavior when the user changes markup later. No action.",
+    "generator-costs panel is shown only when costs.total > 0 (via Generator.jsx). Verified in E2E: appears after first text gen with 'Copy (texto)' line, and shows 'Refação de texto' after second gen with same gen_group_id — matches spec.",
+    "cost_report groups costs even before the piece is saved (piece_id may be None). Rows counting distinct pieces via set(); pieces count may under-count until save-piece binds gen_group -> piece_id. Non-blocking, but worth noting: the reports 'Peças' column can lag between generation and save."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_ai_costs.py (new)"
+  ],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% (7/7 flows)"},
+  "test_credentials": "Admin: jussaracavalcante25@gmail.com / Vanguarda@2026 (cookie-based auth: /api/auth/login sets access_token httpOnly cookie — NO bearer token returned in body).",
+  "seed_data_creation": "One text piece created + deleted by backend test cleanup; one additional piece created via Playwright save-piece flow (title auto-generated, has cost_brl≈R$0.03, refacao_texto stage, gpt-5.4-mini + claude-sonnet-4-6). Left in DB intentionally so main agent can visually verify chip and review-costs modal.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Auth is COOKIE-BASED (httpOnly access_token, session_token). Use requests.Session() and login via POST /api/auth/login — do NOT expect a bearer token in the response body (login returns user info only). Cost feature verified: POST /api/pieces/generate SSE final event shape is {done:true, stage, cost_brl, tokens}; same gen_group_id twice yields stage='refacao_texto' on 2nd. PUT /api/settings {pricing:{markup_pct:X}} persists and GET /api/settings returns merged pricing with defaults (usd_to_brl=5.4, markup_pct=100, image_high_per_unit=0.19, models gpt-5.4-mini/claude-sonnet-4-6). Piece types are: post_instagram, stories, anuncio_meta, anuncio_linkedin, email_marketing, blog (NOT 'instagram_post'). Frontend routes PT-BR (/gerar /pecas /custos /configuracoes). Pieces list only shows piece-cost-<id> chip on pieces WITH cost_brl (older pieces without it show no chip — correct). Review-costs modal is opened by clicking 'Revisar peça' link, not the cost chip. Recharts throws harmless 'width(-1) height(-1)' console warnings on dashboard — not a bug.",
+  "detailed_results": {
+    "backend": {
+      "GET /api/settings pricing defaults + models present": "PASS",
+      "PUT /api/settings markup persists (150) & restored": "PASS",
+      "POST /api/pieces/generate SSE done event stage=copy first": "PASS",
+      "Same gen_group_id 2nd call stage=refacao_texto": "PASS",
+      "POST /api/pieces binds gen_group_id -> cost_brl, regen_count=1, cost_breakdown[copy,refacao_texto], billable_brl": "PASS",
+      "GET /api/pieces returns billable_brl for pieces with cost_brl": "PASS",
+      "GET /api/dashboard kpis includes ai_cost_brl & ai_billable_brl": "PASS",
+      "GET /api/reports/costs {rows,total_cost_brl,total_billable_brl,markup_pct}": "PASS"
+    },
+    "frontend": {
+      "Login + Dashboard KPI cards kpi-ai-cost / kpi-ai-billable with R$ values": "PASS",
+      "/custos reports-page + 3 cards (report-total-cost/billable/margin) + report-table": "PASS (nav-custos works)",
+      "Settings > pricing tab: edit markup 100->150, save, reload, persists": "PASS (restored to 100 after test)",
+      "/gerar: first text gen shows generator-costs panel with Copy line + generator-cost-total in R$": "PASS",
+      "/gerar: second text gen with same gen_group_id shows 'Refação de texto' line and total increases": "PASS",
+      "save-piece-button navigates to /pecas after saving": "PASS",
+      "/pecas: piece-cost-<id> chip visible on new piece": "PASS (1 chip on the piece with cost)",
+      "review-costs modal shows 'Interno' + 'Faturar' with per-stage breakdown (Copy, Refação de texto)": "PASS"
+    }
+  }
+}

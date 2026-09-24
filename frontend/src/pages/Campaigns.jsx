@@ -212,6 +212,7 @@ export default function Campaigns() {
               <div className="flex items-center gap-4">
                 <RoasDial roas={c.totals.roas} />
                 <div className="space-y-1.5 text-xs flex-1">
+                  <div className="flex justify-between"><span className="text-slate-500">Orçamento/dia</span><span className="font-mono text-slate-200" data-testid={`campaign-budget-${c.id}`}>{formatBRL(c.budget_daily)}</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">Investido</span><span className="font-mono text-slate-200">{formatBRL(c.totals.spend)}</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">Impressões</span><span className="font-mono text-slate-200">{formatNumber(c.totals.impressions)}</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">CTR</span><span className="font-mono text-slate-200">{c.totals.ctr}%</span></div>
@@ -251,6 +252,7 @@ export default function Campaigns() {
                 <th className="p-4">Campanha</th>
                 <th className="p-4">Cliente</th>
                 <th className="p-4">Status</th>
+                <th className="p-4 text-right">Orçamento/dia</th>
                 <th className="p-4 text-right">Investido</th>
                 <th className="p-4 text-right">CTR</th>
                 <th className="p-4 text-right">ROAS</th>
@@ -267,6 +269,7 @@ export default function Campaigns() {
                       {STATUS_LABELS[c.status]}
                     </span>
                   </td>
+                  <td className="p-4 text-right font-mono">{formatBRL(c.budget_daily)}</td>
                   <td className="p-4 text-right font-mono">{formatBRL(c.totals.spend)}</td>
                   <td className="p-4 text-right font-mono">{c.totals.ctr}%</td>
                   <td className="p-4 text-right font-mono">{c.totals.roas}x</td>

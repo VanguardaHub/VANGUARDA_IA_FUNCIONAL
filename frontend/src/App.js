@@ -15,6 +15,7 @@ import Generator from "@/pages/Generator";
 import Pieces from "@/pages/Pieces";
 import Bible from "@/pages/Bible";
 import Campaigns from "@/pages/Campaigns";
+import Agents from "@/pages/Agents";
 import Reports from "@/pages/Reports";
 import Logs from "@/pages/Logs";
 import Settings from "@/pages/Settings";
@@ -58,6 +59,7 @@ function AppRouter() {
         <Route path="pecas" element={<Pieces />} />
         <Route path="biblia" element={<Bible />} />
         <Route path="campanhas" element={<Campaigns />} />
+        <Route path="agentes" element={<Agents />} />
         <Route path="custos" element={<Reports />} />
         <Route path="logs" element={<Logs />} />
         <Route path="configuracoes" element={<Settings />} />

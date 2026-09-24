@@ -34,6 +34,9 @@ import docx as docx_lib
 import openpyxl
 
 from payments import payments_router
+import re
+import ipaddress
+from html.parser import HTMLParser
 import nekt
 
 ROOT_DIR = Path(__file__).parent
@@ -80,6 +83,7 @@ STAGE_LABELS = {
     "refacao_texto": "Refação de texto",
     "imagem": "Imagem",
     "refacao_imagem": "Refação de imagem",
+    "agente": "Agente operacional",
 }
 
 def _merge_pricing(user_pricing):
@@ -1325,6 +1329,337 @@ async def cost_report(user: dict = Depends(get_current_user)):
     total_cost = round(sum(r["cost_brl"] for r in rows), 4)
     return {"rows": rows, "total_cost_brl": total_cost, "total_billable_brl": round(total_cost * mk, 4),
             "markup_pct": pricing["markup_pct"]}
+
+# ---------------- Email (Resend gerenciado) ----------------
+EMAIL_BASE_URL = "https://integrations.emergentagent.com"
+EMAIL_KEY = os.environ.get("EMERGENT_EMAIL_KEY")
+EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "Vanguarda.IA")
+EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO")
+
+_SHORTENERS = ("bit.ly", "tinyurl.com", "t.co", "is.gd", "cutt.ly", "goo.gl", "rebrand.ly")
+_CRED_ASK = ("reply with your password", "reply with the code", "send your password", "cvv",
+             "send us your password", "enter your password below", "confirm your card number",
+             "your full card number", "seed phrase", "recovery phrase", "verify your card",
+             "social security number", "confirm your bank details")
+_HOSTISH = re.compile(r"\b(?:https?://)?((?:[a-z0-9-]+\.)+[a-z]{2,})", re.I)
+
+def _host_ok(host: str) -> bool:
+    if not host or "xn--" in host:
+        return False
+    try:
+        ipaddress.ip_address(host)
+        return False
+    except ValueError:
+        pass
+    return not any(host == s or host.endswith("." + s) for s in _SHORTENERS)
+
+def _same_site(shown: str, real: str) -> bool:
+    return shown == real or real.endswith("." + shown) or shown.endswith("." + real)
+
+class _EmailScan(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.tags, self.urls, self.anchors = set(), [], []
+        self._href, self._text = None, []
+    def handle_starttag(self, tag, attrs):
+        self.tags.add(tag.lower())
+        self.urls += [v for k, v in attrs if k.lower() in ("href", "src") and v]
+        if tag.lower() == "a":
+            self._href = dict((k.lower(), v) for k, v in attrs).get("href")
+            self._text = []
+    def handle_data(self, data):
+        if self._href is not None:
+            self._text.append(data)
+    def handle_endtag(self, tag):
+        if tag.lower() == "a" and self._href is not None:
+            self.anchors.append((self._href, "".join(self._text)))
+            self._href, self._text = None, []
+
+def _assert_safe_email(subject: str, html: str) -> None:
+    scan = _EmailScan(); scan.feed(html)
+    if scan.tags & {"form", "input", "textarea", "select"}:
+        raise ValueError("No forms or input fields in email (G2)")
+    body = f"{subject}\n{html}".lower()
+    for p in _CRED_ASK:
+        if p in body:
+            raise ValueError(f"Email asks the recipient for credentials: {p!r} (G2)")
+    for url in scan.urls:
+        low = url.strip().lower()
+        if low.startswith(("mailto:", "tel:", "cid:", "#")):
+            continue
+        if not low.startswith("https://"):
+            raise ValueError(f"Email links/assets must be absolute https: {url!r} (G3)")
+        host = urlparse(low).hostname or ""
+        if not _host_ok(host) or urlparse(low).username is not None:
+            raise ValueError(f"Shortened, numeric-host or credential-bearing URL: {url!r} (G3)")
+    for href, text in scan.anchors:
+        real = urlparse(href.strip().lower()).hostname or ""
+        if not real:
+            continue
+        for m in _HOSTISH.finditer(text):
+            if not _same_site(m.group(1).lower(), real):
+                raise ValueError(f"Anchor text {m.group(1)!r} != real link host {real!r} (G3)")
+
+async def send_email(*, to: str, subject: str, html: str, reply_to: Optional[str] = None) -> Optional[str]:
+    _assert_safe_email(subject, html)
+    payload = {"to": [to], "subject": subject, "html": html, "from_name": EMAIL_FROM_NAME}
+    if reply_to or EMAIL_REPLY_TO:
+        payload["contact_email"] = reply_to or EMAIL_REPLY_TO
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(f"{EMAIL_BASE_URL}/api/v1/email/send",
+                                     headers={"X-Email-Key": EMAIL_KEY}, json=payload)
+        resp.raise_for_status()
+        return resp.json().get("id")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Email send failed: {e.response.status_code} {e.response.text}")
+        raise HTTPException(status_code=502, detail="Falha ao enviar e-mail")
+    except Exception as e:
+        logger.error(f"Email send error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Falha ao enviar e-mail")
+
+# ---------------- Agentes operacionais (human-in-the-loop) ----------------
+AGENTS = {
+    "social": {"label": "Social Media", "sector": "Social", "icon": "share-2",
+               "desc": "Calendário e posts prontos para redes sociais.", "action": "Aprovar cria as peças como rascunho."},
+    "inbound": {"label": "Inbound / Conteúdo", "sector": "Inbound", "icon": "magnet",
+                "desc": "Pautas e artigos de blog para atração e SEO.", "action": "Aprovar cria os artigos como rascunho."},
+    "midia_paga": {"label": "Mídia Paga", "sector": "Mídia Paga", "icon": "target",
+                   "desc": "Estrutura de campanhas Meta Ads a partir do objetivo.", "action": "Aprovar cria a(s) campanha(s)."},
+    "account": {"label": "Account / Atendimento", "sector": "Account", "icon": "mail",
+                "desc": "Relatório de performance redigido para o cliente.", "action": "Aprovar envia o e-mail ao cliente."},
+}
+
+class AgentRunRequest(BaseModel):
+    client_id: str
+    model: str = "claude-sonnet-4-6"
+    instructions: str = ""
+    quantity: int = 5
+
+def _parse_agent_json(raw: str) -> dict:
+    m = re.search(r"\{.*\}", raw, re.S)
+    if not m:
+        raise ValueError("resposta sem JSON")
+    return json.loads(m.group(0))
+
+async def run_agent_llm(user_id, model, system, user_prompt, client_id=None):
+    if model not in AI_MODELS:
+        model = "claude-sonnet-4-6"
+    cfg = AI_MODELS[model]
+    chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=f"agent-{uuid.uuid4().hex[:8]}",
+                   system_message=system).with_model(cfg["provider"], cfg["model"])
+    parts = []; itok = otok = 0
+    async for ev in chat.stream_message(UserMessage(text=user_prompt)):
+        if isinstance(ev, TextDelta):
+            parts.append(ev.content)
+        elif isinstance(ev, StreamDone):
+            if ev.usage:
+                itok = ev.usage.input_tokens or 0
+                otok = ev.usage.output_tokens or 0
+            break
+    cost = await record_cost(user_id, None, "agente", model, itok, otok, client_id=client_id)
+    return "".join(parts).strip(), cost["cost_brl"]
+
+async def _metrics_summary(user_id, client_id) -> str:
+    camps = await db.campaigns.find({"user_id": user_id, "client_id": client_id}, {"_id": 0}).to_list(50)
+    if not camps:
+        return "Sem campanhas ativas/registradas para este cliente."
+    lines = []
+    for c in camps:
+        ms = c.get("metrics", [])[-30:]
+        spend = sum(m["spend"] for m in ms); imp = sum(m["impressions"] for m in ms)
+        clk = sum(m["clicks"] for m in ms); conv = sum(m["conversions"] for m in ms)
+        ctr = round((clk / imp) * 100, 2) if imp else 0
+        lines.append(f"- {c['name']} ({c.get('status')}): invest R${spend:.0f}, {imp} impressões, CTR {ctr}%, {conv} conversões")
+    return "\n".join(lines)
+
+async def _agent_generate(agent_key, user, client, req: AgentRunRequest):
+    uid = user["user_id"]
+    context = await build_brand_context(uid, client["id"])
+    base_ctx = f"Cliente: {client['name']} (segmento: {client.get('segment', 'n/d')}).\nContexto da marca (Bíblia):\n{context}\n"
+    instr = f"Instruções extras do usuário: {req.instructions}\n" if req.instructions else ""
+    q = max(1, min(int(req.quantity or 5), 10))
+
+    if agent_key == "social":
+        system = "Você é estrategista de social media sênior de uma agência brasileira. Responda SOMENTE com JSON válido, sem texto fora do JSON."
+        prompt = (base_ctx + instr + f"Crie um calendário com {q} posts para redes sociais em pt-BR. "
+                  'Retorne JSON: {"posts":[{"format":"post_instagram|stories|anuncio_meta|anuncio_linkedin","title":"...","caption":"legenda pronta em pt-BR","hashtags":["#..."]}]}')
+        data = _parse_agent_json((await run_agent_llm(uid, req.model, system, prompt, client["id"]))[0])
+        posts = data.get("posts", [])[:q]
+        preview = "\n".join(f"• [{p.get('format')}] {p.get('title')}" for p in posts)
+        return {"title": f"Calendário social — {client['name']} ({len(posts)} posts)", "summary": f"{len(posts)} posts propostos", "preview": preview, "payload": {"posts": posts}}
+
+    if agent_key == "inbound":
+        system = "Você é estrategista de inbound/SEO sênior de uma agência brasileira. Responda SOMENTE com JSON válido."
+        prompt = (base_ctx + instr + f"Proponha {min(q,3)} artigos de blog para atração de leads em pt-BR. "
+                  'Retorne JSON: {"articles":[{"title":"...","keywords":["..."],"outline":"tópicos separados por novas linhas","cta":"..."}]}')
+        data = _parse_agent_json((await run_agent_llm(uid, req.model, system, prompt, client["id"]))[0])
+        arts = data.get("articles", [])[:3]
+        preview = "\n".join(f"• {a.get('title')}  [{', '.join(a.get('keywords', [])[:4])}]" for a in arts)
+        return {"title": f"Pauta inbound — {client['name']} ({len(arts)} artigos)", "summary": f"{len(arts)} artigos propostos", "preview": preview, "payload": {"articles": arts}}
+
+    if agent_key == "midia_paga":
+        system = "Você é gestor de tráfego pago (Meta Ads) sênior de uma agência brasileira. Responda SOMENTE com JSON válido."
+        prompt = (base_ctx + instr + "Proponha 1 a 2 campanhas Meta Ads em pt-BR. "
+                  'Retorne JSON: {"campaigns":[{"name":"...","objective":"Conversões|Tráfego|Remarketing|Reconhecimento|Leads","budget_daily":100,"audience":"descrição do público","angles":["ângulo criativo"]}]}')
+        data = _parse_agent_json((await run_agent_llm(uid, req.model, system, prompt, client["id"]))[0])
+        camps = data.get("campaigns", [])[:2]
+        preview = "\n".join(f"• {c.get('name')} — {c.get('objective')} · R${c.get('budget_daily')}/dia" for c in camps)
+        return {"title": f"Campanhas Meta Ads — {client['name']}", "summary": f"{len(camps)} campanha(s) proposta(s)", "preview": preview, "payload": {"campaigns": camps}}
+
+    if agent_key == "account":
+        metrics = await _metrics_summary(uid, client["id"])
+        system = "Você é account/atendimento sênior de uma agência brasileira. Escreva um relatório claro e cordial em pt-BR. Responda SOMENTE com JSON válido."
+        prompt = (base_ctx + instr + f"Métricas recentes:\n{metrics}\n\n"
+                  "Escreva um relatório de performance para o cliente (texto corrido, sem HTML, sem pedir senhas/dados sensíveis). "
+                  'Retorne JSON: {"subject":"assunto do e-mail","report_text":"corpo do relatório em pt-BR"}')
+        data = _parse_agent_json((await run_agent_llm(uid, req.model, system, prompt, client["id"]))[0])
+        subject = data.get("subject", f"Relatório de performance — {client['name']}")
+        report = data.get("report_text", "")
+        preview = f"Para: {client.get('contact_email') or '(sem e-mail)'}\nAssunto: {subject}\n\n{report[:600]}"
+        return {"title": f"Relatório ao cliente — {client['name']}", "summary": subject, "preview": preview,
+                "payload": {"subject": subject, "report_text": report, "to_email": client.get("contact_email", "")}}
+
+    raise HTTPException(status_code=400, detail="Agente inválido")
+
+@api_router.get("/agents")
+async def list_agents(user: dict = Depends(get_current_user)):
+    return [{"key": k, **v} for k, v in AGENTS.items()]
+
+@api_router.post("/agents/{agent_key}/run")
+async def run_agent(agent_key: str, req: AgentRunRequest, user: dict = Depends(get_current_user)):
+    if agent_key not in AGENTS:
+        raise HTTPException(status_code=404, detail="Agente não encontrado")
+    client = await db.clients.find_one({"id": req.client_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+    try:
+        gen = await _agent_generate(agent_key, user, client, req)
+    except (ValueError, json.JSONDecodeError):
+        raise HTTPException(status_code=502, detail="O agente não retornou um resultado válido. Tente novamente.")
+    prop = {
+        "id": f"prop_{uuid.uuid4().hex[:12]}", "user_id": user["user_id"], "agent_key": agent_key,
+        "agent_label": AGENTS[agent_key]["label"], "client_id": req.client_id, "client_name": client["name"],
+        "model": req.model, "status": "pendente", "title": gen["title"], "summary": gen["summary"],
+        "preview": gen["preview"], "payload": gen["payload"], "result": None,
+        "created_at": datetime.now(timezone.utc).isoformat(), "decided_at": None,
+    }
+    await db.agent_proposals.insert_one(prop)
+    await log_activity(user["user_id"], "agente", f"Agente {AGENTS[agent_key]['label']} gerou proposta para {client['name']}")
+    prop.pop("_id", None)
+    return prop
+
+@api_router.get("/agents/proposals")
+async def list_proposals(status: Optional[str] = None, user: dict = Depends(get_current_user)):
+    q = {"user_id": user["user_id"]}
+    if status:
+        q["status"] = status
+    return await db.agent_proposals.find(q, {"_id": 0}).sort("created_at", -1).to_list(200)
+
+@api_router.put("/agents/proposals/{prop_id}")
+async def update_proposal(prop_id: str, body: dict, user: dict = Depends(get_current_user)):
+    p = await db.agent_proposals.find_one({"id": prop_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not p:
+        raise HTTPException(status_code=404, detail="Proposta não encontrada")
+    if p["status"] != "pendente":
+        raise HTTPException(status_code=400, detail="Proposta já decidida")
+    payload = body.get("payload")
+    if payload is not None:
+        await db.agent_proposals.update_one({"id": prop_id}, {"$set": {"payload": payload}})
+    return await db.agent_proposals.find_one({"id": prop_id}, {"_id": 0})
+
+async def _apply_proposal(p, user):
+    uid = user["user_id"]; key = p["agent_key"]; payload = p["payload"]; now = datetime.now(timezone.utc).isoformat()
+    if key == "social":
+        n = 0
+        for post in payload.get("posts", []):
+            fmt = post.get("format") if post.get("format") in PIECE_TYPES else "post_instagram"
+            content = (post.get("caption") or "").strip()
+            tags = post.get("hashtags") or []
+            if tags:
+                content += "\n\n" + " ".join(tags)
+            await db.pieces.insert_one({
+                "id": f"pc_{uuid.uuid4().hex[:12]}", "user_id": uid, "client_id": p["client_id"],
+                "title": post.get("title") or "Post", "piece_type": fmt, "model": p["model"],
+                "prompt": "Gerado pelo agente Social", "content": content, "image": None,
+                "status": "rascunho", "created_at": now, "source_agent": "social",
+            })
+            n += 1
+        return {"created_pieces": n}
+    if key == "inbound":
+        n = 0
+        for a in payload.get("articles", []):
+            content = f"{a.get('title', '')}\n\n{a.get('outline', '')}\n\nCTA: {a.get('cta', '')}\nKeywords: {', '.join(a.get('keywords', []))}"
+            await db.pieces.insert_one({
+                "id": f"pc_{uuid.uuid4().hex[:12]}", "user_id": uid, "client_id": p["client_id"],
+                "title": a.get("title") or "Artigo", "piece_type": "blog", "model": p["model"],
+                "prompt": "Gerado pelo agente Inbound", "content": content, "image": None,
+                "status": "rascunho", "created_at": now, "source_agent": "inbound",
+            })
+            n += 1
+        return {"created_pieces": n}
+    if key == "midia_paga":
+        client = await db.clients.find_one({"id": p["client_id"], "user_id": uid}, {"_id": 0})
+        n = 0
+        for c in payload.get("campaigns", []):
+            cid = f"cmp_{uuid.uuid4().hex[:12]}"
+            try:
+                budget = float(c.get("budget_daily") or 100)
+            except (TypeError, ValueError):
+                budget = 100.0
+            await db.campaigns.insert_one({
+                "id": cid, "user_id": uid, "client_id": p["client_id"], "platform": "meta",
+                "client_name": client["name"] if client else p["client_name"],
+                "name": c.get("name") or "Campanha", "objective": c.get("objective") or "Conversões",
+                "budget_daily": budget, "status": "ativa",
+                "audience": c.get("audience", ""), "angles": c.get("angles", []),
+                "ad_account_id": f"act_{random.randint(10**9, 10**10 - 1)}",
+                "metrics": campaign_metrics_series(cid), "created_at": now,
+            })
+            n += 1
+        return {"created_campaigns": n}
+    if key == "account":
+        to = (payload.get("to_email") or "").strip()
+        if not to:
+            raise HTTPException(status_code=400, detail="Cliente sem e-mail de contato para enviar o relatório.")
+        subject = payload.get("subject") or f"Relatório de performance — {p['client_name']}"
+        safe = escape(payload.get("report_text", "")).replace("\n", "<br>")
+        html = (f'<table role="presentation" width="100%"><tr><td style="padding:24px;font-family:Arial,sans-serif;color:#111">'
+                f'<p>{safe}</p>'
+                f'<p style="font-size:12px;color:#888">Enviado por {escape(EMAIL_FROM_NAME)}. Nunca pedimos senha ou dados de cartão por e-mail.</p>'
+                f'</td></tr></table>')
+        email_id = await send_email(to=to, subject=subject, html=html)
+        return {"email_id": email_id, "to": to}
+    raise HTTPException(status_code=400, detail="Agente inválido")
+
+@api_router.post("/agents/proposals/{prop_id}/approve")
+async def approve_proposal(prop_id: str, user: dict = Depends(get_current_user)):
+    p = await db.agent_proposals.find_one({"id": prop_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not p:
+        raise HTTPException(status_code=404, detail="Proposta não encontrada")
+    if p["status"] != "pendente":
+        raise HTTPException(status_code=400, detail="Proposta já decidida")
+    result = await _apply_proposal(p, user)
+    await db.agent_proposals.update_one({"id": prop_id}, {"$set": {
+        "status": "aprovado", "result": result, "decided_at": datetime.now(timezone.utc).isoformat()}})
+    await log_activity(user["user_id"], "agente", f"Proposta aprovada e executada: {p['title']}")
+    return await db.agent_proposals.find_one({"id": prop_id}, {"_id": 0})
+
+@api_router.post("/agents/proposals/{prop_id}/reject")
+async def reject_proposal(prop_id: str, user: dict = Depends(get_current_user)):
+    p = await db.agent_proposals.find_one({"id": prop_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not p:
+        raise HTTPException(status_code=404, detail="Proposta não encontrada")
+    await db.agent_proposals.update_one({"id": prop_id}, {"$set": {
+        "status": "rejeitado", "decided_at": datetime.now(timezone.utc).isoformat()}})
+    return {"message": "Proposta rejeitada"}
+
+@api_router.delete("/agents/proposals/{prop_id}")
+async def delete_proposal(prop_id: str, user: dict = Depends(get_current_user)):
+    r = await db.agent_proposals.delete_one({"id": prop_id, "user_id": user["user_id"]})
+    if r.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Proposta não encontrada")
+    return {"message": "Proposta removida"}
 
 @api_router.get("/integrations/nekt/status")
 async def nekt_status(admin: dict = Depends(get_admin_user)):

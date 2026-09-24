@@ -115,6 +115,12 @@ def _text_cost_usd(model: str, input_tokens: int, output_tokens: int, pricing: d
     mp = pricing["models"].get(model, DEFAULT_PRICING["models"]["gpt-5.4-mini"])
     return (input_tokens / 1_000_000) * mp["input_per_m"] + (output_tokens / 1_000_000) * mp["output_per_m"]
 
+def _num(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return 0.0
+
 async def record_cost(user_id, gen_group_id, stage, model, input_tokens=0, output_tokens=0, images=0, client_id=None, extra_usd=0.0):
     pricing = await get_pricing(user_id)
     usd = float(extra_usd)
@@ -1422,11 +1428,11 @@ async def send_email(*, to: str, subject: str, html: str, reply_to: Optional[str
 # ---------------- Agentes operacionais (human-in-the-loop) ----------------
 AGENTS = {
     "social": {"label": "Social Media", "sector": "Social", "icon": "share-2",
-               "desc": "Calendário e posts prontos para redes sociais.", "action": "Aprovar cria as peças como rascunho."},
+               "desc": "Plano de social com estratégia, tendências, cronograma, prazos, custos, copy e briefing de arte.", "action": "Aprovar cria as peças (rascunho) já com datas e briefs."},
     "inbound": {"label": "Inbound / Conteúdo", "sector": "Inbound", "icon": "magnet",
-                "desc": "Pautas e artigos de blog para atração e SEO.", "action": "Aprovar cria os artigos como rascunho."},
+                "desc": "Plano de conteúdo por funil e SEO com cronograma, prazos de redação e custos.", "action": "Aprovar cria os artigos (rascunho) com outline e capa."},
     "midia_paga": {"label": "Mídia Paga", "sector": "Mídia Paga", "icon": "target",
-                   "desc": "Estrutura de campanhas Meta Ads a partir do objetivo.", "action": "Aprovar cria a(s) campanha(s)."},
+                   "desc": "Plano de mídia por funil com orçamento, cronograma, públicos, criativos e metas.", "action": "Aprovar cria a(s) campanha(s) com datas e verba."},
     "account": {"label": "Account / Atendimento", "sector": "Account", "icon": "mail",
                 "desc": "Relatório de performance redigido para o cliente.", "action": "Aprovar envia o e-mail ao cliente."},
     "otimizacao": {"label": "Otimização de Performance", "sector": "Mídia Paga", "icon": "trending-up",
@@ -1482,33 +1488,83 @@ async def _agent_generate(agent_key, user, client, req: AgentRunRequest):
     base_ctx = f"Cliente: {client['name']} (segmento: {client.get('segment', 'n/d')}).\nContexto da marca (Bíblia):\n{context}\n"
     instr = f"Instruções extras do usuário: {req.instructions}\n" if req.instructions else ""
     q = max(1, min(int(req.quantity or 5), 10))
+    hoje = datetime.now(timezone.utc).date().isoformat()
 
     if agent_key == "social":
-        system = "Você é estrategista de social media sênior de uma agência brasileira. Responda SOMENTE com JSON válido, sem texto fora do JSON."
-        prompt = (base_ctx + instr + f"Crie um calendário com {q} posts para redes sociais em pt-BR. "
-                  'Retorne JSON: {"posts":[{"format":"post_instagram|stories|anuncio_meta|anuncio_linkedin","title":"...","caption":"legenda pronta em pt-BR","hashtags":["#..."]}]}')
+        system = ("Você é Head de Social Media de uma agência brasileira premium. Domina tendências ATUAIS (Reels curtos, storytelling, UGC, "
+                  "social commerce, carrosséis salváveis, IA generativa) e traduz isso em resultado. Entrega planos acionáveis com cronograma, "
+                  "prazos de produção, custos e briefing de arte. Responda SOMENTE com JSON válido, sem texto fora do JSON.")
+        prompt = (base_ctx + instr + f"Data de hoje: {hoje}. Monte um PLANO de social media com {q} publicações em pt-BR, distribuídas em DATAS REAIS a partir de hoje, "
+                  "aplicando tendências atuais de mercado ao segmento do cliente. Cada item deve ter copy pronta para publicar e um briefing de arte detalhado. "
+                  'Retorne JSON: {"estrategia":"resumo estratégico em 2-3 frases citando as tendências aplicadas","periodo":"ex: 10 a 24/06",'
+                  '"posts":[{"data_publicacao":"AAAA-MM-DD","prazo_arte":"AAAA-MM-DD","formato":"post_instagram|stories|reel|carrossel|anuncio_meta",'
+                  '"pilar":"Autoridade|Conexão|Conversão|Educação","tendencia":"tendência de mercado aplicada","titulo":"título curto",'
+                  '"legenda":"legenda pronta, persuasiva, em pt-BR, com quebras de linha e emojis quando fizer sentido","hashtags":["#..."],'
+                  '"cta":"chamada para ação","brief_arte":"descrição visual detalhada para o designer/IA gerar a arte (cena, estilo, cores, texto na peça)",'
+                  '"custo_estimado":80}],"custo_total":0,"kpis":["métricas de sucesso"]}')
         data = _parse_agent_json((await run_agent_llm(uid, req.model, system, prompt, client["id"]))[0])
         posts = data.get("posts", [])[:q]
-        preview = "\n".join(f"• [{p.get('format')}] {p.get('title')}" for p in posts)
-        return {"title": f"Calendário social — {client['name']} ({len(posts)} posts)", "summary": f"{len(posts)} posts propostos", "preview": preview, "payload": {"posts": posts}}
+        total = _num(data.get("custo_total")) or sum(_num(p.get("custo_estimado")) for p in posts)
+        lines = [f"Estratégia: {data.get('estrategia', '')}",
+                 f"Período: {data.get('periodo', '—')}  |  Custo estimado: R${total:.0f}", ""]
+        for p in posts:
+            lines.append(f"- {p.get('data_publicacao', '—')} [{p.get('formato')}] {p.get('titulo')}")
+            lines.append(f"    Pilar {p.get('pilar', '—')} · Tendência: {p.get('tendencia', '—')} · Prazo arte {p.get('prazo_arte', '—')} · R${_num(p.get('custo_estimado')):.0f}")
+            lines.append(f"    Arte: {p.get('brief_arte', '—')}")
+        if data.get("kpis"):
+            lines.append("\nKPIs: " + ", ".join(data["kpis"]))
+        return {"title": f"Plano social — {client['name']} ({len(posts)} posts)",
+                "summary": f"{len(posts)} posts · R${total:.0f} · {data.get('periodo', '')}",
+                "preview": "\n".join(lines),
+                "payload": {"posts": posts, "estrategia": data.get("estrategia", ""), "periodo": data.get("periodo", ""), "custo_total": total, "kpis": data.get("kpis", [])}}
 
     if agent_key == "inbound":
-        system = "Você é estrategista de inbound/SEO sênior de uma agência brasileira. Responda SOMENTE com JSON válido."
-        prompt = (base_ctx + instr + f"Proponha {min(q,3)} artigos de blog para atração de leads em pt-BR. "
-                  'Retorne JSON: {"articles":[{"title":"...","keywords":["..."],"outline":"tópicos separados por novas linhas","cta":"..."}]}')
+        system = ("Você é Head de Inbound & SEO de uma agência brasileira. Domina SEO atual (intenção de busca, EEAT, topic clusters, "
+                  "featured snippets), estratégia de funil e nutrição de leads. Responda SOMENTE com JSON válido.")
+        prompt = (base_ctx + instr + f"Data de hoje: {hoje}. Proponha {min(q, 4)} conteúdos de blog em pt-BR com estratégia de FUNIL e SEO, com cronograma, prazos e custos. "
+                  'Retorne JSON: {"estrategia":"resumo da estratégia de inbound e tendências aplicadas",'
+                  '"articles":[{"titulo":"título otimizado para SEO","etapa_funil":"Topo|Meio|Fundo","palavra_chave":"palavra-chave principal",'
+                  '"keywords":["secundárias"],"intencao_busca":"informacional|comercial|transacional","data_publicacao":"AAAA-MM-DD","prazo_redacao":"AAAA-MM-DD",'
+                  '"outline":"H2/H3 do artigo separados por novas linhas","cta":"chamada para ação","brief_arte":"imagem de capa sugerida","custo_estimado":150}],'
+                  '"custo_total":0,"kpis":["métricas de sucesso"]}')
         data = _parse_agent_json((await run_agent_llm(uid, req.model, system, prompt, client["id"]))[0])
-        arts = data.get("articles", [])[:3]
-        preview = "\n".join(f"• {a.get('title')}  [{', '.join(a.get('keywords', [])[:4])}]" for a in arts)
-        return {"title": f"Pauta inbound — {client['name']} ({len(arts)} artigos)", "summary": f"{len(arts)} artigos propostos", "preview": preview, "payload": {"articles": arts}}
+        arts = data.get("articles", [])[:4]
+        total = _num(data.get("custo_total")) or sum(_num(a.get("custo_estimado")) for a in arts)
+        lines = [f"Estratégia: {data.get('estrategia', '')}", f"Custo estimado: R${total:.0f}", ""]
+        for a in arts:
+            lines.append(f"- [{a.get('etapa_funil', '—')}] {a.get('titulo')}")
+            lines.append(f"    Palavra-chave: {a.get('palavra_chave', '—')} ({a.get('intencao_busca', '—')}) · Publicar {a.get('data_publicacao', '—')} · Prazo redação {a.get('prazo_redacao', '—')} · R${_num(a.get('custo_estimado')):.0f}")
+        if data.get("kpis"):
+            lines.append("\nKPIs: " + ", ".join(data["kpis"]))
+        return {"title": f"Plano inbound — {client['name']} ({len(arts)} artigos)",
+                "summary": f"{len(arts)} artigos · R${total:.0f}",
+                "preview": "\n".join(lines),
+                "payload": {"articles": arts, "estrategia": data.get("estrategia", ""), "custo_total": total, "kpis": data.get("kpis", [])}}
 
     if agent_key == "midia_paga":
-        system = "Você é gestor de tráfego pago (Meta Ads) sênior de uma agência brasileira. Responda SOMENTE com JSON válido."
-        prompt = (base_ctx + instr + "Proponha 1 a 2 campanhas Meta Ads em pt-BR. "
-                  'Retorne JSON: {"campaigns":[{"name":"...","objective":"Conversões|Tráfego|Remarketing|Reconhecimento|Leads","budget_daily":100,"audience":"descrição do público","angles":["ângulo criativo"]}]}')
+        system = ("Você é Head de Mídia Paga (Meta/Google Ads) de uma agência brasileira. Estrutura campanhas por funil (topo/meio/fundo), "
+                  "com públicos, criativos, cronograma, orçamento e metas, usando tendências atuais (Advantage+, criativos em vídeo/UGC). "
+                  "Responda SOMENTE com JSON válido.")
+        prompt = (base_ctx + instr + f"Data de hoje: {hoje}. Monte um PLANO DE MÍDIA com 1 a 3 campanhas Meta Ads em pt-BR, cobrindo o funil, com orçamento, "
+                  "cronograma (datas de início/fim), públicos, briefing de criativo e metas de performance. "
+                  'Retorne JSON: {"estrategia":"visão geral do funil e das tendências aplicadas","campaigns":[{"name":"nome da campanha",'
+                  '"objetivo_funil":"Topo|Meio|Fundo","objective":"Reconhecimento|Tráfego|Conversões|Leads|Remarketing","budget_daily":100,"duracao_dias":30,'
+                  '"data_inicio":"AAAA-MM-DD","data_fim":"AAAA-MM-DD","audience":"segmentação detalhada (interesses, lookalike, remarketing)",'
+                  '"angles":["ângulos criativos"],"brief_criativo":"descrição do criativo/arte a produzir","kpi_alvo":"ex: CPA < R$30 / ROAS > 3",'
+                  '"resultado_esperado":"estimativa de resultado"}],"investimento_total":0}')
         data = _parse_agent_json((await run_agent_llm(uid, req.model, system, prompt, client["id"]))[0])
-        camps = data.get("campaigns", [])[:2]
-        preview = "\n".join(f"• {c.get('name')} — {c.get('objective')} · R${c.get('budget_daily')}/dia" for c in camps)
-        return {"title": f"Campanhas Meta Ads — {client['name']}", "summary": f"{len(camps)} campanha(s) proposta(s)", "preview": preview, "payload": {"campaigns": camps}}
+        camps = data.get("campaigns", [])[:3]
+        total_inv = _num(data.get("investimento_total")) or sum(_num(c.get("budget_daily")) * (_num(c.get("duracao_dias")) or 30) for c in camps)
+        lines = [f"Estratégia: {data.get('estrategia', '')}", f"Investimento total estimado: R${total_inv:.0f}", ""]
+        for c in camps:
+            lines.append(f"- {c.get('name')} [{c.get('objetivo_funil', '—')} · {c.get('objective', '—')}]")
+            lines.append(f"    R${_num(c.get('budget_daily')):.0f}/dia · {c.get('duracao_dias', '—')} dias ({c.get('data_inicio', '—')} a {c.get('data_fim', '—')}) · Meta: {c.get('kpi_alvo', '—')}")
+            lines.append(f"    Público: {c.get('audience', '—')}")
+            lines.append(f"    Criativo: {c.get('brief_criativo', '—')}")
+        return {"title": f"Plano de mídia — {client['name']} ({len(camps)} campanhas)",
+                "summary": f"{len(camps)} campanha(s) · R${total_inv:.0f} total",
+                "preview": "\n".join(lines),
+                "payload": {"campaigns": camps, "estrategia": data.get("estrategia", ""), "investimento_total": total_inv}}
 
     if agent_key == "account":
         metrics = await _metrics_summary(uid, client["id"])
@@ -1602,28 +1658,50 @@ async def _apply_proposal(p, user):
     if key == "social":
         n = 0
         for post in payload.get("posts", []):
-            fmt = post.get("format") if post.get("format") in PIECE_TYPES else "post_instagram"
-            content = (post.get("caption") or "").strip()
+            fmt = post.get("formato") if post.get("formato") in PIECE_TYPES else "post_instagram"
+            parts = [(post.get("legenda") or "").strip()]
             tags = post.get("hashtags") or []
             if tags:
-                content += "\n\n" + " ".join(tags)
+                parts.append(" ".join(tags))
+            if post.get("cta"):
+                parts.append(f"CTA: {post.get('cta')}")
+            if post.get("brief_arte"):
+                parts.append(f"Brief de arte: {post.get('brief_arte')}")
+            meta = []
+            if post.get("pilar"):
+                meta.append(f"Pilar: {post.get('pilar')}")
+            if post.get("tendencia"):
+                meta.append(f"Tendência: {post.get('tendencia')}")
+            if post.get("prazo_arte"):
+                meta.append(f"Prazo arte: {post.get('prazo_arte')}")
+            if meta:
+                parts.append(" · ".join(meta))
+            dp = post.get("data_publicacao")
+            scheduled = f"{dp}T12:00:00+00:00" if dp and re.match(r"^\d{4}-\d{2}-\d{2}$", str(dp)) else None
             await db.pieces.insert_one({
                 "id": f"pc_{uuid.uuid4().hex[:12]}", "user_id": uid, "client_id": p["client_id"],
-                "title": post.get("title") or "Post", "piece_type": fmt, "model": p["model"],
-                "prompt": "Gerado pelo agente Social", "content": content, "image": None,
-                "status": "rascunho", "created_at": now, "source_agent": "social",
+                "title": post.get("titulo") or "Post", "piece_type": fmt, "model": p["model"],
+                "prompt": post.get("brief_arte") or "Gerado pelo agente Social", "content": "\n\n".join([x for x in parts if x]),
+                "image": None, "status": "rascunho", "scheduled_at": scheduled,
+                "created_at": now, "source_agent": "social",
             })
             n += 1
         return {"created_pieces": n}
     if key == "inbound":
         n = 0
         for a in payload.get("articles", []):
-            content = f"{a.get('title', '')}\n\n{a.get('outline', '')}\n\nCTA: {a.get('cta', '')}\nKeywords: {', '.join(a.get('keywords', []))}"
+            content = (f"{a.get('titulo', '')}\n\nEtapa do funil: {a.get('etapa_funil', '—')}\n"
+                       f"Palavra-chave: {a.get('palavra_chave', '—')} ({a.get('intencao_busca', '—')})\n"
+                       f"Keywords: {', '.join(a.get('keywords', []))}\n\n{a.get('outline', '')}\n\n"
+                       f"CTA: {a.get('cta', '')}\nBrief de capa: {a.get('brief_arte', '')}")
+            dp = a.get("data_publicacao")
+            scheduled = f"{dp}T12:00:00+00:00" if dp and re.match(r"^\d{4}-\d{2}-\d{2}$", str(dp)) else None
             await db.pieces.insert_one({
                 "id": f"pc_{uuid.uuid4().hex[:12]}", "user_id": uid, "client_id": p["client_id"],
-                "title": a.get("title") or "Artigo", "piece_type": "blog", "model": p["model"],
-                "prompt": "Gerado pelo agente Inbound", "content": content, "image": None,
-                "status": "rascunho", "created_at": now, "source_agent": "inbound",
+                "title": a.get("titulo") or "Artigo", "piece_type": "blog", "model": p["model"],
+                "prompt": a.get("brief_arte") or "Gerado pelo agente Inbound", "content": content,
+                "image": None, "status": "rascunho", "scheduled_at": scheduled,
+                "created_at": now, "source_agent": "inbound",
             })
             n += 1
         return {"created_pieces": n}
@@ -1632,16 +1710,16 @@ async def _apply_proposal(p, user):
         n = 0
         for c in payload.get("campaigns", []):
             cid = f"cmp_{uuid.uuid4().hex[:12]}"
-            try:
-                budget = float(c.get("budget_daily") or 100)
-            except (TypeError, ValueError):
-                budget = 100.0
+            budget = _num(c.get("budget_daily")) or 100.0
             await db.campaigns.insert_one({
                 "id": cid, "user_id": uid, "client_id": p["client_id"], "platform": "meta",
                 "client_name": client["name"] if client else p["client_name"],
                 "name": c.get("name") or "Campanha", "objective": c.get("objective") or "Conversões",
-                "budget_daily": budget, "status": "ativa",
+                "objetivo_funil": c.get("objetivo_funil", ""), "budget_daily": budget, "status": "ativa",
+                "duracao_dias": c.get("duracao_dias"), "data_inicio": c.get("data_inicio"), "data_fim": c.get("data_fim"),
                 "audience": c.get("audience", ""), "angles": c.get("angles", []),
+                "brief_criativo": c.get("brief_criativo", ""), "kpi_alvo": c.get("kpi_alvo", ""),
+                "resultado_esperado": c.get("resultado_esperado", ""),
                 "ad_account_id": f"act_{random.randint(10**9, 10**10 - 1)}",
                 "metrics": campaign_metrics_series(cid), "created_at": now,
             })

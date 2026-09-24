@@ -214,7 +214,7 @@ export default function Agents() {
                     <span className="text-[10px] text-slate-500 font-mono">{p.model}</span>
                   </div>
                   <p className="text-xs text-slate-500 mb-2">{p.client_name} · {format(parseISO(p.created_at), "dd/MM/yyyy HH:mm")}</p>
-                  <pre className="text-xs text-slate-300 whitespace-pre-wrap font-sans bg-[#0E0E11] border border-slate-800 rounded-lg p-3 max-h-52 overflow-y-auto">{p.preview}</pre>
+                  <pre className="text-xs text-slate-300 whitespace-pre-wrap font-sans bg-[#0E0E11] border border-slate-800 rounded-lg p-3 max-h-80 overflow-y-auto">{p.preview}</pre>
                   {p.status === "aprovado" && p.result && (
                     <p className="text-xs text-emerald-400 mt-2 flex items-center gap-1.5" data-testid={`proposal-result-${p.id}`}>
                       <CheckCircle2 className="w-3.5 h-3.5" />

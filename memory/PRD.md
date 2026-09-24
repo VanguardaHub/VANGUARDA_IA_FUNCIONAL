@@ -172,3 +172,12 @@ Multi-tenant por usuário; geração de conteúdo com IA contextualizada por mar
 - AGENDAMENTO (crons plataforma): coleção agent_schedules (agent_key, client_id, model, frequency daily/weekly, weekday 0=Dom..6=Sáb, hour UTC, active, last_run_key idempotência). CRUD /api/agents/schedules (GET/POST/PATCH/DELETE). Cron endpoint POST /api/cron/agents-run (auth Bearer WEBHOOK_CRON_SECRET via hmac.compare_digest, ack imediato + asyncio background _run_due_schedules que cria propostas pendentes). Arquivo /app/.emergent/crons.yml (agents-scheduler, "0 * * * *" hourly). WEBHOOK_CRON_SECRET no backend/.env. Frontend: seção Agendamentos (schedule-new dialog, schedules-list, toggle/delete).
 - Testado: backend por curl (bulk approved=2; otimizacao optimized_campaigns=4; cron disparou 401/401/200 e criou proposta agendada) e frontend testing_agent iteration_13 = 100% (as 3 features). Corrigido bug: decorator @api_router.get("/agents") havia sido removido por engano e foi restaurado.
 - test files: /app/test_reports/iteration_13.json
+
+## 2026-06 — Reformulação dos agentes (planos completos e acionáveis)
+- Problema: agentes vagos (só título/hook). Reformulados os prompts/saídas de social, inbound, midia_paga em _agent_generate para entregarem: estratégia + tendências ATUAIS de mercado, cronograma com DATAS reais (a partir de hoje), prazos de produção, custos estimados (por item e total), briefing de arte detalhado e copy pronta. Personas sênior (Head de Social/Inbound/Mídia).
+- Social payload por post: data_publicacao, prazo_arte, formato, pilar, tendencia, titulo, legenda, hashtags, cta, brief_arte, custo_estimado (+ estrategia, periodo, custo_total, kpis).
+- Inbound por artigo: etapa_funil, palavra_chave, keywords, intencao_busca, data_publicacao, prazo_redacao, outline, cta, brief_arte, custo_estimado.
+- Mídia Paga por campanha: objetivo_funil, objective, budget_daily, duracao_dias, data_inicio/fim, audience, angles, brief_criativo, kpi_alvo, resultado_esperado (+ investimento_total).
+- Apply enriquecido: social/inbound criam pieces com conteúdo completo (legenda+hashtags+CTA+brief de arte+meta) e scheduled_at = data_publicacao; midia_paga cria campanhas com datas/duração/verba/brief/KPI. Helper _num() para parsing seguro. Preview server-side multi-linha; frontend <pre> max-h-80.
+- Cards (AGENTS desc) atualizados citando cronograma/prazos/custos/arte.
+- Verificado por curl (gpt-5.4-mini): social 3 posts R$240 com 11 campos/post; midia_paga 3 campanhas R$7500, approve criou 3 campanhas. Backend OK.

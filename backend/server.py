@@ -1482,6 +1482,110 @@ async def _metrics_summary(user_id, client_id) -> str:
         lines.append(f"- {c['name']} ({c.get('status')}): invest R${spend:.0f}, {imp} impressões, CTR {ctr}%, {conv} conversões")
     return "\n".join(lines)
 
+def _media_total(camps) -> float:
+    return sum(_num(c.get("budget_daily")) * (_num(c.get("duracao_dias")) or 30) for c in camps)
+
+def _proposal_view(agent_key, client_name, payload) -> dict:
+    """Monta título, resumo e texto do plano a partir do payload (usado na geração e na edição)."""
+    if agent_key == "social":
+        posts = payload.get("posts", []); total = _num(payload.get("custo_total"))
+        lines = [f"Estratégia: {payload.get('estrategia', '')}",
+                 f"Período: {payload.get('periodo') or '—'}  |  Custo estimado: R${total:.0f}", ""]
+        for p in posts:
+            lines.append(f"- {p.get('data_publicacao', '—')} [{p.get('formato')}] {p.get('titulo')}")
+            lines.append(f"    Pilar {p.get('pilar', '—')} · Tendência: {p.get('tendencia', '—')} · Prazo arte {p.get('prazo_arte', '—')} · R${_num(p.get('custo_estimado')):.0f}")
+            lines.append(f"    Arte: {p.get('brief_arte', '—')}")
+        if payload.get("kpis"):
+            lines.append("\nKPIs: " + ", ".join(payload["kpis"]))
+        return {"title": f"Plano social — {client_name} ({len(posts)} posts)",
+                "summary": f"{len(posts)} posts · R${total:.0f} · {payload.get('periodo', '')}",
+                "preview": "\n".join(lines)}
+    if agent_key == "inbound":
+        arts = payload.get("articles", []); total = _num(payload.get("custo_total"))
+        lines = [f"Estratégia: {payload.get('estrategia', '')}", f"Custo estimado: R${total:.0f}", ""]
+        for a in arts:
+            lines.append(f"- [{a.get('etapa_funil', '—')}] {a.get('titulo')}")
+            lines.append(f"    Palavra-chave: {a.get('palavra_chave', '—')} ({a.get('intencao_busca', '—')}) · Publicar {a.get('data_publicacao', '—')} · Prazo redação {a.get('prazo_redacao', '—')} · R${_num(a.get('custo_estimado')):.0f}")
+        if payload.get("kpis"):
+            lines.append("\nKPIs: " + ", ".join(payload["kpis"]))
+        return {"title": f"Plano inbound — {client_name} ({len(arts)} artigos)",
+                "summary": f"{len(arts)} artigos · R${total:.0f}",
+                "preview": "\n".join(lines)}
+    if agent_key == "midia_paga":
+        camps = payload.get("campaigns", []); total_inv = _num(payload.get("investimento_total"))
+        lines = [f"Estratégia: {payload.get('estrategia', '')}", f"Investimento total estimado: R${total_inv:.0f}", ""]
+        for c in camps:
+            lines.append(f"- {c.get('name')} [{c.get('objetivo_funil', '—')} · {c.get('objective', '—')}]")
+            lines.append(f"    R${_num(c.get('budget_daily')):.0f}/dia · {c.get('duracao_dias', '—')} dias ({c.get('data_inicio', '—')} a {c.get('data_fim', '—')}) · Meta: {c.get('kpi_alvo', '—')}")
+            lines.append(f"    Público: {c.get('audience', '—')}")
+            lines.append(f"    Criativo: {c.get('brief_criativo', '—')}")
+        return {"title": f"Plano de mídia — {client_name} ({len(camps)} campanhas)",
+                "summary": f"{len(camps)} campanha(s) · R${total_inv:.0f} total",
+                "preview": "\n".join(lines)}
+    if agent_key == "account":
+        subject = payload.get("subject") or f"Relatório de performance — {client_name}"
+        preview = f"Para: {payload.get('to_email') or '(sem e-mail)'}\nAssunto: {subject}\n\n{(payload.get('report_text') or '')[:600]}"
+        return {"title": f"Relatório ao cliente — {client_name}", "summary": subject, "preview": preview}
+    raise HTTPException(status_code=400, detail="Este tipo de proposta não pode ser editado")
+
+# Campos editáveis por agente: (chave da lista de itens, campos de cada item, campos gerais do plano).
+# Tipos: "s" texto, "n" número, "l" lista de textos.
+PROPOSAL_EDIT_SCHEMA = {
+    "social": ("posts",
+               {"data_publicacao": "s", "prazo_arte": "s", "formato": "s", "pilar": "s", "tendencia": "s", "titulo": "s",
+                "legenda": "s", "hashtags": "l", "cta": "s", "brief_arte": "s", "custo_estimado": "n"},
+               {"estrategia": "s", "periodo": "s", "kpis": "l"}),
+    "inbound": ("articles",
+                {"titulo": "s", "etapa_funil": "s", "palavra_chave": "s", "keywords": "l", "intencao_busca": "s",
+                 "data_publicacao": "s", "prazo_redacao": "s", "outline": "s", "cta": "s", "brief_arte": "s", "custo_estimado": "n"},
+                {"estrategia": "s", "kpis": "l"}),
+    "midia_paga": ("campaigns",
+                   {"name": "s", "objetivo_funil": "s", "objective": "s", "budget_daily": "n", "duracao_dias": "n",
+                    "data_inicio": "s", "data_fim": "s", "audience": "s", "angles": "l", "brief_criativo": "s",
+                    "kpi_alvo": "s", "resultado_esperado": "s"},
+                   {"estrategia": "s"}),
+    "account": (None, {}, {"subject": "s", "report_text": "s", "to_email": "s"}),
+}
+PLAN_AGENTS = ("social", "inbound", "midia_paga")  # só estes podem ser editados depois de aprovados
+MAX_PLAN_ITEMS = 10
+
+def _clean_field(kind, v):
+    if kind == "n":
+        return max(0.0, _num(v))
+    if kind == "l":
+        items = v if isinstance(v, list) else re.split(r"[,\n]", str(v or ""))
+        return [str(x).strip()[:200] for x in items if str(x).strip()][:30]
+    return "" if v is None else str(v).strip()[:8000]
+
+def _sanitize_proposal_payload(agent_key, original: dict, incoming) -> dict:
+    """Aceita só os campos conhecidos, com tipos corretos, e recalcula os totais."""
+    if agent_key not in PROPOSAL_EDIT_SCHEMA:
+        raise HTTPException(status_code=400, detail="Este tipo de proposta não pode ser editado")
+    if not isinstance(incoming, dict):
+        raise HTTPException(status_code=400, detail="Dados do plano inválidos")
+    list_key, item_fields, top_fields = PROPOSAL_EDIT_SCHEMA[agent_key]
+    payload = dict(original or {})
+    for f, kind in top_fields.items():
+        if f in incoming:
+            payload[f] = _clean_field(kind, incoming[f])
+    if list_key:
+        raw_items = incoming.get(list_key, payload.get(list_key, []))
+        if not isinstance(raw_items, list):
+            raise HTTPException(status_code=400, detail="Lista de itens inválida")
+        if len(raw_items) > MAX_PLAN_ITEMS:
+            raise HTTPException(status_code=400, detail=f"Máximo de {MAX_PLAN_ITEMS} itens por plano")
+        payload[list_key] = [{f: _clean_field(kind, it.get(f)) for f, kind in item_fields.items()}
+                             for it in raw_items if isinstance(it, dict)]
+        if agent_key == "midia_paga":
+            for c in payload[list_key]:
+                c["duracao_dias"] = int(c["duracao_dias"]) or 30
+            payload["investimento_total"] = _media_total(payload[list_key])
+        else:
+            payload["custo_total"] = sum(it["custo_estimado"] for it in payload[list_key])
+    if agent_key == "account" and payload.get("to_email") and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", payload["to_email"]):
+        raise HTTPException(status_code=400, detail="E-mail do destinatário inválido")
+    return payload
+
 async def _agent_generate(agent_key, user, client, req: AgentRunRequest):
     uid = user["user_id"]
     context = await build_brand_context(uid, client["id"])
@@ -1505,18 +1609,8 @@ async def _agent_generate(agent_key, user, client, req: AgentRunRequest):
         data = _parse_agent_json((await run_agent_llm(uid, req.model, system, prompt, client["id"]))[0])
         posts = data.get("posts", [])[:q]
         total = _num(data.get("custo_total")) or sum(_num(p.get("custo_estimado")) for p in posts)
-        lines = [f"Estratégia: {data.get('estrategia', '')}",
-                 f"Período: {data.get('periodo', '—')}  |  Custo estimado: R${total:.0f}", ""]
-        for p in posts:
-            lines.append(f"- {p.get('data_publicacao', '—')} [{p.get('formato')}] {p.get('titulo')}")
-            lines.append(f"    Pilar {p.get('pilar', '—')} · Tendência: {p.get('tendencia', '—')} · Prazo arte {p.get('prazo_arte', '—')} · R${_num(p.get('custo_estimado')):.0f}")
-            lines.append(f"    Arte: {p.get('brief_arte', '—')}")
-        if data.get("kpis"):
-            lines.append("\nKPIs: " + ", ".join(data["kpis"]))
-        return {"title": f"Plano social — {client['name']} ({len(posts)} posts)",
-                "summary": f"{len(posts)} posts · R${total:.0f} · {data.get('periodo', '')}",
-                "preview": "\n".join(lines),
-                "payload": {"posts": posts, "estrategia": data.get("estrategia", ""), "periodo": data.get("periodo", ""), "custo_total": total, "kpis": data.get("kpis", [])}}
+        payload = {"posts": posts, "estrategia": data.get("estrategia", ""), "periodo": data.get("periodo", ""), "custo_total": total, "kpis": data.get("kpis", [])}
+        return {**_proposal_view("social", client["name"], payload), "payload": payload}
 
     if agent_key == "inbound":
         system = ("Você é Head de Inbound & SEO de uma agência brasileira. Domina SEO atual (intenção de busca, EEAT, topic clusters, "
@@ -1530,16 +1624,8 @@ async def _agent_generate(agent_key, user, client, req: AgentRunRequest):
         data = _parse_agent_json((await run_agent_llm(uid, req.model, system, prompt, client["id"]))[0])
         arts = data.get("articles", [])[:4]
         total = _num(data.get("custo_total")) or sum(_num(a.get("custo_estimado")) for a in arts)
-        lines = [f"Estratégia: {data.get('estrategia', '')}", f"Custo estimado: R${total:.0f}", ""]
-        for a in arts:
-            lines.append(f"- [{a.get('etapa_funil', '—')}] {a.get('titulo')}")
-            lines.append(f"    Palavra-chave: {a.get('palavra_chave', '—')} ({a.get('intencao_busca', '—')}) · Publicar {a.get('data_publicacao', '—')} · Prazo redação {a.get('prazo_redacao', '—')} · R${_num(a.get('custo_estimado')):.0f}")
-        if data.get("kpis"):
-            lines.append("\nKPIs: " + ", ".join(data["kpis"]))
-        return {"title": f"Plano inbound — {client['name']} ({len(arts)} artigos)",
-                "summary": f"{len(arts)} artigos · R${total:.0f}",
-                "preview": "\n".join(lines),
-                "payload": {"articles": arts, "estrategia": data.get("estrategia", ""), "custo_total": total, "kpis": data.get("kpis", [])}}
+        payload = {"articles": arts, "estrategia": data.get("estrategia", ""), "custo_total": total, "kpis": data.get("kpis", [])}
+        return {**_proposal_view("inbound", client["name"], payload), "payload": payload}
 
     if agent_key == "midia_paga":
         system = ("Você é Head de Mídia Paga (Meta/Google Ads) de uma agência brasileira. Estrutura campanhas por funil (topo/meio/fundo), "
@@ -1554,17 +1640,9 @@ async def _agent_generate(agent_key, user, client, req: AgentRunRequest):
                   '"resultado_esperado":"estimativa de resultado"}],"investimento_total":0}')
         data = _parse_agent_json((await run_agent_llm(uid, req.model, system, prompt, client["id"]))[0])
         camps = data.get("campaigns", [])[:3]
-        total_inv = _num(data.get("investimento_total")) or sum(_num(c.get("budget_daily")) * (_num(c.get("duracao_dias")) or 30) for c in camps)
-        lines = [f"Estratégia: {data.get('estrategia', '')}", f"Investimento total estimado: R${total_inv:.0f}", ""]
-        for c in camps:
-            lines.append(f"- {c.get('name')} [{c.get('objetivo_funil', '—')} · {c.get('objective', '—')}]")
-            lines.append(f"    R${_num(c.get('budget_daily')):.0f}/dia · {c.get('duracao_dias', '—')} dias ({c.get('data_inicio', '—')} a {c.get('data_fim', '—')}) · Meta: {c.get('kpi_alvo', '—')}")
-            lines.append(f"    Público: {c.get('audience', '—')}")
-            lines.append(f"    Criativo: {c.get('brief_criativo', '—')}")
-        return {"title": f"Plano de mídia — {client['name']} ({len(camps)} campanhas)",
-                "summary": f"{len(camps)} campanha(s) · R${total_inv:.0f} total",
-                "preview": "\n".join(lines),
-                "payload": {"campaigns": camps, "estrategia": data.get("estrategia", ""), "investimento_total": total_inv}}
+        total_inv = _num(data.get("investimento_total")) or _media_total(camps)
+        payload = {"campaigns": camps, "estrategia": data.get("estrategia", ""), "investimento_total": total_inv}
+        return {**_proposal_view("midia_paga", client["name"], payload), "payload": payload}
 
     if agent_key == "account":
         metrics = await _metrics_summary(uid, client["id"])
@@ -1574,10 +1652,8 @@ async def _agent_generate(agent_key, user, client, req: AgentRunRequest):
                   'Retorne JSON: {"subject":"assunto do e-mail","report_text":"corpo do relatório em pt-BR"}')
         data = _parse_agent_json((await run_agent_llm(uid, req.model, system, prompt, client["id"]))[0])
         subject = data.get("subject", f"Relatório de performance — {client['name']}")
-        report = data.get("report_text", "")
-        preview = f"Para: {client.get('contact_email') or '(sem e-mail)'}\nAssunto: {subject}\n\n{report[:600]}"
-        return {"title": f"Relatório ao cliente — {client['name']}", "summary": subject, "preview": preview,
-                "payload": {"subject": subject, "report_text": report, "to_email": client.get("contact_email", "")}}
+        payload = {"subject": subject, "report_text": data.get("report_text", ""), "to_email": client.get("contact_email", "")}
+        return {**_proposal_view("account", client["name"], payload), "payload": payload}
 
     if agent_key == "otimizacao":
         camps = await db.campaigns.find({"user_id": uid, "client_id": client["id"]}, {"_id": 0}).to_list(50)
@@ -1646,11 +1722,18 @@ async def update_proposal(prop_id: str, body: dict, user: dict = Depends(get_cur
     p = await db.agent_proposals.find_one({"id": prop_id, "user_id": user["user_id"]}, {"_id": 0})
     if not p:
         raise HTTPException(status_code=404, detail="Proposta não encontrada")
-    if p["status"] != "pendente":
-        raise HTTPException(status_code=400, detail="Proposta já decidida")
-    payload = body.get("payload")
-    if payload is not None:
-        await db.agent_proposals.update_one({"id": prop_id}, {"$set": {"payload": payload}})
+    # Pendente: a edição muda o que será criado na aprovação.
+    # Aprovado (só planos): atualiza o registro do plano; campanhas/peças já criadas não mudam.
+    editable = p["status"] == "pendente" or (p["status"] == "aprovado" and p["agent_key"] in PLAN_AGENTS)
+    if not editable:
+        raise HTTPException(status_code=400, detail="Esta proposta não pode mais ser editada")
+    if body.get("payload") is None:
+        raise HTTPException(status_code=400, detail="Nada para salvar")
+    payload = _sanitize_proposal_payload(p["agent_key"], p.get("payload"), body["payload"])
+    view = _proposal_view(p["agent_key"], p["client_name"], payload)
+    await db.agent_proposals.update_one({"id": prop_id}, {"$set": {
+        "payload": payload, **view, "edited_at": datetime.now(timezone.utc).isoformat()}})
+    await log_activity(user["user_id"], "agente", f"Proposta editada: {view['title']}")
     return await db.agent_proposals.find_one({"id": prop_id}, {"_id": 0})
 
 async def _apply_proposal(p, user):

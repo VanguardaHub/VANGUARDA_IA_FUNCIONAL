@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Bot, Share2, Magnet, Target, Mail, Loader2, Check, X, Trash2, Play, Clock, CheckCircle2, TrendingUp, Plus, Power, CalendarClock, CheckSquare } from "lucide-react";
+import { Bot, Share2, Magnet, Target, Mail, Loader2, Check, X, Trash2, Play, Clock, CheckCircle2, TrendingUp, Plus, Power, CalendarClock, CheckSquare, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 
@@ -16,6 +16,84 @@ const MODELS = [
   { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
   { id: "gpt-5.4-mini", label: "GPT-5.4 Mini" },
 ];
+// Campos editáveis de cada plano. type: text | textarea | number | date | list (separado por vírgula)
+const EDIT_SCHEMA = {
+  midia_paga: {
+    listKey: "campaigns", itemLabel: "Campanha",
+    top: [{ key: "estrategia", label: "Estratégia", type: "textarea" }],
+    item: [
+      { key: "name", label: "Nome da campanha", type: "text", full: true },
+      { key: "objetivo_funil", label: "Etapa do funil", type: "text" },
+      { key: "objective", label: "Objetivo", type: "text" },
+      { key: "budget_daily", label: "Orçamento diário (R$)", type: "number" },
+      { key: "duracao_dias", label: "Duração (dias)", type: "number" },
+      { key: "data_inicio", label: "Início", type: "date" },
+      { key: "data_fim", label: "Fim", type: "date" },
+      { key: "kpi_alvo", label: "Meta", type: "text", full: true },
+      { key: "audience", label: "Público", type: "textarea" },
+      { key: "brief_criativo", label: "Criativo", type: "textarea" },
+      { key: "angles", label: "Ângulos criativos (separados por vírgula)", type: "list" },
+      { key: "resultado_esperado", label: "Resultado esperado", type: "textarea" },
+    ],
+  },
+  social: {
+    listKey: "posts", itemLabel: "Post",
+    top: [
+      { key: "estrategia", label: "Estratégia", type: "textarea" },
+      { key: "periodo", label: "Período", type: "text" },
+      { key: "kpis", label: "KPIs (separados por vírgula)", type: "list" },
+    ],
+    item: [
+      { key: "titulo", label: "Título", type: "text", full: true },
+      { key: "data_publicacao", label: "Publicação", type: "date" },
+      { key: "prazo_arte", label: "Prazo da arte", type: "date" },
+      { key: "formato", label: "Formato", type: "text" },
+      { key: "pilar", label: "Pilar", type: "text" },
+      { key: "tendencia", label: "Tendência", type: "text" },
+      { key: "custo_estimado", label: "Custo estimado (R$)", type: "number" },
+      { key: "legenda", label: "Legenda", type: "textarea" },
+      { key: "hashtags", label: "Hashtags (separadas por vírgula)", type: "list" },
+      { key: "cta", label: "CTA", type: "text", full: true },
+      { key: "brief_arte", label: "Brief de arte", type: "textarea" },
+    ],
+  },
+  inbound: {
+    listKey: "articles", itemLabel: "Artigo",
+    top: [
+      { key: "estrategia", label: "Estratégia", type: "textarea" },
+      { key: "kpis", label: "KPIs (separados por vírgula)", type: "list" },
+    ],
+    item: [
+      { key: "titulo", label: "Título", type: "text", full: true },
+      { key: "etapa_funil", label: "Etapa do funil", type: "text" },
+      { key: "intencao_busca", label: "Intenção de busca", type: "text" },
+      { key: "palavra_chave", label: "Palavra-chave", type: "text" },
+      { key: "custo_estimado", label: "Custo estimado (R$)", type: "number" },
+      { key: "data_publicacao", label: "Publicação", type: "date" },
+      { key: "prazo_redacao", label: "Prazo de redação", type: "date" },
+      { key: "keywords", label: "Palavras secundárias (separadas por vírgula)", type: "list" },
+      { key: "outline", label: "Estrutura (H2/H3)", type: "textarea" },
+      { key: "cta", label: "CTA", type: "text", full: true },
+      { key: "brief_arte", label: "Brief da capa", type: "textarea" },
+    ],
+  },
+  account: {
+    listKey: null,
+    top: [
+      { key: "to_email", label: "Para (e-mail)", type: "text" },
+      { key: "subject", label: "Assunto", type: "text" },
+      { key: "report_text", label: "Relatório", type: "textarea", tall: true },
+    ],
+    item: [],
+  },
+};
+const PLAN_AGENTS = ["social", "inbound", "midia_paga"];
+const canEdit = (p) => !!EDIT_SCHEMA[p.agent_key] && (p.status === "pendente" || (p.status === "aprovado" && PLAN_AGENTS.includes(p.agent_key)));
+const toForm = (fields, src) => Object.fromEntries(fields.map((f) => {
+  const v = src?.[f.key];
+  return [f.key, f.type === "list" ? (Array.isArray(v) ? v.join(", ") : v || "") : v ?? ""];
+}));
+
 const STATUS = {
   pendente: "bg-amber-500/10 text-amber-400 border-amber-500/20",
   aprovado: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -36,6 +114,53 @@ export default function Agents() {
   const [schedules, setSchedules] = useState([]);
   const [schedOpen, setSchedOpen] = useState(false);
   const [sched, setSched] = useState({ agent_key: "social", client_id: "", model: "claude-sonnet-4-6", instructions: "", quantity: 5, frequency: "weekly", weekday: 1, hour: 9 });
+
+  const [editProp, setEditProp] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const openEdit = (p) => {
+    const sc = EDIT_SCHEMA[p.agent_key];
+    const payload = p.payload || {};
+    setEditProp(p);
+    setEditForm({
+      top: toForm(sc.top, payload),
+      items: sc.listKey ? (payload[sc.listKey] || []).map((it) => toForm(sc.item, it)) : [],
+    });
+  };
+  const setTop = (key, value) => setEditForm((f) => ({ ...f, top: { ...f.top, [key]: value } }));
+  const setItem = (i, key, value) => setEditForm((f) => ({ ...f, items: f.items.map((it, j) => (j === i ? { ...it, [key]: value } : it)) }));
+  const removeItem = (i) => setEditForm((f) => ({ ...f, items: f.items.filter((_, j) => j !== i) }));
+  const addItem = () => setEditForm((f) => ({ ...f, items: [...f.items, toForm(EDIT_SCHEMA[editProp.agent_key].item, {})] }));
+  const saveEdit = async () => {
+    const sc = EDIT_SCHEMA[editProp.agent_key];
+    if (sc.listKey && editForm.items.length === 0) { toast.error(`Mantenha ao menos um item (${sc.itemLabel.toLowerCase()})`); return; }
+    const payload = { ...editForm.top };
+    if (sc.listKey) payload[sc.listKey] = editForm.items;
+    setSavingEdit(true);
+    try {
+      const { data } = await api.put(`/agents/proposals/${editProp.id}`, { payload });
+      setProposals((prev) => prev.map((x) => (x.id === data.id ? data : x)));
+      toast.success("Plano atualizado");
+      setEditProp(null);
+    } catch (err) {
+      toast.error(formatApiError(err));
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const renderField = (f, value, onChange, testId) => (
+    <div key={f.key} className={`space-y-1.5 ${f.full || f.type === "textarea" || f.type === "list" ? "col-span-2" : ""}`}>
+      <Label className="text-slate-300 text-xs">{f.label}</Label>
+      {f.type === "textarea" ? (
+        <Textarea value={value} onChange={(e) => onChange(e.target.value)} className={`bg-[#0E0E11] border-slate-700 text-sm ${f.tall ? "min-h-[240px]" : "min-h-20"}`} data-testid={testId} />
+      ) : (
+        <Input type={f.type === "number" ? "number" : f.type === "date" ? "date" : "text"} min={f.type === "number" ? "0" : undefined}
+          value={value} onChange={(e) => onChange(e.target.value)} className="bg-[#0E0E11] border-slate-700" data-testid={testId} />
+      )}
+    </div>
+  );
 
   const loadScheds = () => api.get("/agents/schedules").then(({ data }) => setSchedules(data)).catch(() => {});
 
@@ -213,7 +338,10 @@ export default function Agents() {
                     <span className="px-2 py-0.5 rounded-md text-[10px] font-mono border bg-white/5 border-slate-700 text-slate-400">{p.agent_label}</span>
                     <span className="text-[10px] text-slate-500 font-mono">{p.model}</span>
                   </div>
-                  <p className="text-xs text-slate-500 mb-2">{p.client_name} · {format(parseISO(p.created_at), "dd/MM/yyyy HH:mm")}</p>
+                  <p className="text-xs text-slate-500 mb-2">
+                    {p.client_name} · {format(parseISO(p.created_at), "dd/MM/yyyy HH:mm")}
+                    {p.edited_at && <> · <span className="text-slate-400">Editado {format(parseISO(p.edited_at), "dd/MM HH:mm")}</span></>}
+                  </p>
                   <pre className="text-xs text-slate-300 whitespace-pre-wrap font-sans bg-[#0E0E11] border border-slate-800 rounded-lg p-3 max-h-80 overflow-y-auto">{p.preview}</pre>
                   {p.status === "aprovado" && p.result && (
                     <p className="text-xs text-emerald-400 mt-2 flex items-center gap-1.5" data-testid={`proposal-result-${p.id}`}>
@@ -225,6 +353,11 @@ export default function Agents() {
                   )}
                 </div>
                 <div className="flex flex-col gap-2 shrink-0 w-32">
+                  {canEdit(p) && (
+                    <Button size="sm" variant="outline" onClick={() => openEdit(p)} className="border-slate-700 bg-white/5 hover:bg-white/10 text-slate-200" data-testid={`proposal-edit-${p.id}`}>
+                      <Pencil className="w-3.5 h-3.5 mr-1" /> Editar
+                    </Button>
+                  )}
                   {p.status === "pendente" ? (
                     <>
                       <Button size="sm" onClick={() => approve(p.id)} disabled={busyId === p.id} className="bg-emerald-600 hover:bg-emerald-500 text-white" data-testid={`proposal-approve-${p.id}`}>
@@ -311,6 +444,58 @@ export default function Agents() {
               {running ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Gerando proposta...</> : <><Play className="w-4 h-4 mr-2" /> Gerar proposta</>}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editProp} onOpenChange={(o) => { if (!o && !savingEdit) setEditProp(null); }}>
+        <DialogContent className="bg-[#15151A] border-slate-800 text-slate-100 max-w-3xl max-h-[90vh] overflow-y-auto" data-testid="proposal-edit-dialog">
+          {editProp && editForm && (() => {
+            const sc = EDIT_SCHEMA[editProp.agent_key];
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="font-display pr-8">Editar — {editProp.title}</DialogTitle>
+                  <DialogDescription className="text-slate-400">
+                    {editProp.status === "pendente"
+                      ? "As alterações valem para o que será criado quando você aprovar."
+                      : "Este plano já foi aprovado: a edição atualiza apenas o registro do plano. As campanhas/peças já criadas não são alteradas."}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid grid-cols-2 gap-3">
+                  {sc.top.map((f) => renderField(f, editForm.top[f.key], (v) => setTop(f.key, v), `edit-top-${f.key}`))}
+                </div>
+                {sc.listKey && (
+                  <div className="space-y-3 pt-2">
+                    {editForm.items.map((it, i) => (
+                      <div key={i} className="rounded-lg border border-slate-800 bg-white/[0.02] p-4" data-testid={`edit-item-${i}`}>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs uppercase tracking-wider text-slate-500">{sc.itemLabel} {i + 1}</span>
+                          <button onClick={() => removeItem(i)} title={`Remover ${sc.itemLabel.toLowerCase()}`} aria-label={`Remover ${sc.itemLabel.toLowerCase()}`}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10" data-testid={`edit-item-remove-${i}`}>
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          {sc.item.map((f) => renderField(f, it[f.key], (v) => setItem(i, f.key, v), `edit-item-${i}-${f.key}`))}
+                        </div>
+                      </div>
+                    ))}
+                    {editForm.items.length < 10 && (
+                      <Button variant="outline" size="sm" onClick={addItem} className="border-slate-700 bg-white/5 hover:bg-white/10 text-slate-300" data-testid="edit-item-add">
+                        <Plus className="w-3.5 h-3.5 mr-1.5" /> Adicionar {sc.itemLabel.toLowerCase()}
+                      </Button>
+                    )}
+                  </div>
+                )}
+                <div className="flex gap-2 pt-4 border-t border-slate-800">
+                  <Button onClick={saveEdit} disabled={savingEdit} className="bg-emerald-600 hover:bg-emerald-500 text-white" data-testid="edit-save">
+                    {savingEdit ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvando...</> : "Salvar alterações"}
+                  </Button>
+                  <Button variant="outline" onClick={() => setEditProp(null)} disabled={savingEdit} className="border-slate-700 bg-white/5 text-slate-300" data-testid="edit-cancel">Cancelar</Button>
+                </div>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 

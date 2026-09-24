@@ -66,8 +66,8 @@ export default function Agents() {
       const msg = r.created_pieces != null ? `${r.created_pieces} peça(s) criada(s)`
         : r.created_campaigns != null ? `${r.created_campaigns} campanha(s) criada(s)`
         : r.email_id ? `E-mail enviado para ${r.to}` : "Ação executada";
+      setProposals((prev) => prev.map((x) => (x.id === id ? data : x)));
       toast.success(`Aprovado — ${msg}`);
-      loadProps();
     } catch (err) {
       toast.error(formatApiError(err));
     } finally {
@@ -76,12 +76,17 @@ export default function Agents() {
   };
 
   const reject = async (id) => {
-    try { await api.post(`/agents/proposals/${id}/reject`); toast.success("Proposta rejeitada"); loadProps(); }
-    catch (err) { toast.error(formatApiError(err)); }
+    try {
+      await api.post(`/agents/proposals/${id}/reject`);
+      setProposals((prev) => prev.map((x) => (x.id === id ? { ...x, status: "rejeitado" } : x)));
+      toast.success("Proposta rejeitada");
+    } catch (err) { toast.error(formatApiError(err)); }
   };
   const remove = async (id) => {
-    try { await api.delete(`/agents/proposals/${id}`); loadProps(); }
-    catch (err) { toast.error(formatApiError(err)); }
+    try {
+      await api.delete(`/agents/proposals/${id}`);
+      setProposals((prev) => prev.filter((x) => x.id !== id));
+    } catch (err) { toast.error(formatApiError(err)); }
   };
 
   const filtered = filter === "all" ? proposals : proposals.filter((p) => p.status === filter);

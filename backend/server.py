@@ -19,7 +19,8 @@ import jwt
 import httpx
 from html import escape
 from urllib.parse import urlparse
-from fastapi import FastAPI, APIRouter, Request, Response, HTTPException, BackgroundTasks, Depends, UploadFile, File, Form
+from fastapi import FastAPI, APIRouter, Request, Response, HTTPException, BackgroundTasks, Depends, UploadFile, File, Form, Header
+import hmac
 from fastapi.responses import StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -1428,6 +1429,8 @@ AGENTS = {
                    "desc": "Estrutura de campanhas Meta Ads a partir do objetivo.", "action": "Aprovar cria a(s) campanha(s)."},
     "account": {"label": "Account / Atendimento", "sector": "Account", "icon": "mail",
                 "desc": "Relatório de performance redigido para o cliente.", "action": "Aprovar envia o e-mail ao cliente."},
+    "otimizacao": {"label": "Otimização de Performance", "sector": "Mídia Paga", "icon": "trending-up",
+                   "desc": "Lê métricas e recomenda pausar/escalar/ajustar campanhas.", "action": "Aprovar aplica as ações nas campanhas."},
 }
 
 class AgentRunRequest(BaseModel):
@@ -1519,6 +1522,32 @@ async def _agent_generate(agent_key, user, client, req: AgentRunRequest):
         preview = f"Para: {client.get('contact_email') or '(sem e-mail)'}\nAssunto: {subject}\n\n{report[:600]}"
         return {"title": f"Relatório ao cliente — {client['name']}", "summary": subject, "preview": preview,
                 "payload": {"subject": subject, "report_text": report, "to_email": client.get("contact_email", "")}}
+
+    if agent_key == "otimizacao":
+        camps = await db.campaigns.find({"user_id": uid, "client_id": client["id"]}, {"_id": 0}).to_list(50)
+        if not camps:
+            raise HTTPException(status_code=400, detail="Cliente sem campanhas para otimizar.")
+        lines = []
+        for c in camps:
+            ms = c.get("metrics", [])[-14:]
+            spend = sum(m["spend"] for m in ms); imp = sum(m["impressions"] for m in ms)
+            clk = sum(m["clicks"] for m in ms); conv = sum(m["conversions"] for m in ms)
+            ctr = round((clk / imp) * 100, 2) if imp else 0
+            cpa = round(spend / conv, 2) if conv else 0
+            lines.append(f'id={c["id"]} | {c["name"]} | status={c.get("status")} | budget=R${c.get("budget_daily")}/dia | invest14d=R${spend:.0f} | CTR={ctr}% | conv={conv} | CPA=R${cpa}')
+        system = "Você é gestor de tráfego pago (Meta Ads) sênior. Analise as campanhas e recomende ações objetivas. Responda SOMENTE com JSON válido."
+        prompt = (base_ctx + instr + "Campanhas do cliente (use EXATAMENTE o campaign_id fornecido):\n" + "\n".join(lines) +
+                  '\n\nRetorne JSON: {"actions":[{"campaign_id":"id exato da lista","campaign_name":"...","recommendation":"pausar|ativar|escalar|reduzir","reason":"motivo curto em pt-BR","budget_new":número ou null}]}. '
+                  "Recomende: pausar campanhas com desperdício (CTR baixo e CPA alto sem conversões); escalar (aumentar budget) as de melhor desempenho; reduzir as ineficientes; ativar pausadas promissoras. Só inclua ações que valem a pena.")
+        data = _parse_agent_json((await run_agent_llm(uid, req.model, system, prompt, client["id"]))[0])
+        valid = {c["id"] for c in camps}
+        actions = [a for a in data.get("actions", []) if a.get("campaign_id") in valid][:10]
+        lbl = {"pausar": "Pausar", "ativar": "Ativar", "escalar": "Escalar budget", "reduzir": "Reduzir budget"}
+        preview = "\n".join(
+            f'• {a.get("campaign_name")}: {lbl.get(a.get("recommendation"), a.get("recommendation"))}'
+            + (f' → R${a.get("budget_new")}/dia' if a.get("budget_new") else "")
+            + f'\n   ↳ {a.get("reason", "")}' for a in actions)
+        return {"title": f"Otimização — {client['name']} ({len(actions)} ações)", "summary": f"{len(actions)} recomendação(ões)", "preview": preview, "payload": {"actions": actions}}
 
     raise HTTPException(status_code=400, detail="Agente inválido")
 
@@ -1628,8 +1657,31 @@ async def _apply_proposal(p, user):
                 f'<p>{safe}</p>'
                 f'<p style="font-size:12px;color:#888">Enviado por {escape(EMAIL_FROM_NAME)}. Nunca pedimos senha ou dados de cartão por e-mail.</p>'
                 f'</td></tr></table>')
-        email_id = await send_email(to=to, subject=subject, html=html)
-        return {"email_id": email_id, "to": to}
+    if key == "otimizacao":
+        applied = 0
+        for a in payload.get("actions", []):
+            cid = a.get("campaign_id"); rec = a.get("recommendation"); upd = {}
+            if rec == "pausar":
+                upd["status"] = "pausada"
+            elif rec == "ativar":
+                upd["status"] = "ativa"
+            elif rec in ("escalar", "reduzir"):
+                bn = a.get("budget_new")
+                if bn:
+                    try:
+                        upd["budget_daily"] = float(bn)
+                    except (TypeError, ValueError):
+                        pass
+                if "budget_daily" not in upd:
+                    c = await db.campaigns.find_one({"id": cid, "user_id": uid}, {"_id": 0, "budget_daily": 1})
+                    if c:
+                        cur = float(c.get("budget_daily") or 100)
+                        upd["budget_daily"] = round(cur * (1.2 if rec == "escalar" else 0.8), 2)
+            if upd:
+                r = await db.campaigns.update_one({"id": cid, "user_id": uid}, {"$set": upd})
+                if r.matched_count:
+                    applied += 1
+        return {"optimized_campaigns": applied}
     raise HTTPException(status_code=400, detail="Agente inválido")
 
 @api_router.post("/agents/proposals/{prop_id}/approve")
@@ -1660,6 +1712,120 @@ async def delete_proposal(prop_id: str, user: dict = Depends(get_current_user)):
     if r.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Proposta não encontrada")
     return {"message": "Proposta removida"}
+
+class BulkAction(BaseModel):
+    ids: List[str]
+    action: str  # approve | reject
+
+@api_router.post("/agents/proposals/bulk")
+async def bulk_proposals(body: BulkAction, user: dict = Depends(get_current_user)):
+    approved = rejected = errors = 0
+    for pid in body.ids:
+        p = await db.agent_proposals.find_one({"id": pid, "user_id": user["user_id"]}, {"_id": 0})
+        if not p or p["status"] != "pendente":
+            errors += 1
+            continue
+        try:
+            if body.action == "approve":
+                result = await _apply_proposal(p, user)
+                await db.agent_proposals.update_one({"id": pid}, {"$set": {"status": "aprovado", "result": result, "decided_at": datetime.now(timezone.utc).isoformat()}})
+                approved += 1
+            else:
+                await db.agent_proposals.update_one({"id": pid}, {"$set": {"status": "rejeitado", "decided_at": datetime.now(timezone.utc).isoformat()}})
+                rejected += 1
+        except Exception as e:
+            logger.error(f"Bulk {body.action} falhou para {pid}: {e}")
+            errors += 1
+    return {"approved": approved, "rejected": rejected, "errors": errors}
+
+# ---------------- Agendamentos de agentes ----------------
+class AgentScheduleCreate(BaseModel):
+    agent_key: str
+    client_id: str
+    model: str = "claude-sonnet-4-6"
+    instructions: str = ""
+    quantity: int = 5
+    frequency: str = "weekly"  # daily | weekly
+    weekday: int = 1           # 0=Dom .. 6=Sáb (para weekly)
+    hour: int = 9              # hora UTC
+
+@api_router.get("/agents/schedules")
+async def list_schedules(user: dict = Depends(get_current_user)):
+    return await db.agent_schedules.find({"user_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
+
+@api_router.post("/agents/schedules")
+async def create_schedule(req: AgentScheduleCreate, user: dict = Depends(get_current_user)):
+    if req.agent_key not in AGENTS:
+        raise HTTPException(status_code=404, detail="Agente não encontrado")
+    client = await db.clients.find_one({"id": req.client_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+    doc = {
+        "id": f"sch_{uuid.uuid4().hex[:12]}", "user_id": user["user_id"], "agent_key": req.agent_key,
+        "agent_label": AGENTS[req.agent_key]["label"], "client_id": req.client_id, "client_name": client["name"],
+        "model": req.model, "instructions": req.instructions, "quantity": req.quantity,
+        "frequency": req.frequency, "weekday": int(req.weekday), "hour": int(req.hour),
+        "active": True, "last_run_key": None, "last_run_at": None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.agent_schedules.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+@api_router.patch("/agents/schedules/{sid}")
+async def toggle_schedule(sid: str, body: dict, user: dict = Depends(get_current_user)):
+    r = await db.agent_schedules.update_one({"id": sid, "user_id": user["user_id"]}, {"$set": {"active": bool(body.get("active"))}})
+    if r.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Agendamento não encontrado")
+    return await db.agent_schedules.find_one({"id": sid}, {"_id": 0})
+
+@api_router.delete("/agents/schedules/{sid}")
+async def delete_schedule(sid: str, user: dict = Depends(get_current_user)):
+    r = await db.agent_schedules.delete_one({"id": sid, "user_id": user["user_id"]})
+    if r.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Agendamento não encontrado")
+    return {"message": "Agendamento removido"}
+
+async def _run_due_schedules():
+    now = datetime.now(timezone.utc)
+    our_wd = (now.weekday() + 1) % 7  # python Mon=0..Sun=6 -> nosso 0=Dom..6=Sáb
+    key = f"{now.date().isoformat()}-{now.hour}"
+    schedules = await db.agent_schedules.find({"active": True}).to_list(1000)
+    for s in schedules:
+        if int(s.get("hour", 9)) != now.hour:
+            continue
+        if s.get("frequency") == "weekly" and int(s.get("weekday", 1)) != our_wd:
+            continue
+        if s.get("last_run_key") == key:
+            continue
+        await db.agent_schedules.update_one({"id": s["id"]}, {"$set": {"last_run_key": key, "last_run_at": now.isoformat()}})
+        try:
+            client = await db.clients.find_one({"id": s["client_id"], "user_id": s["user_id"]}, {"_id": 0})
+            if not client:
+                continue
+            req = AgentRunRequest(client_id=s["client_id"], model=s.get("model", "claude-sonnet-4-6"),
+                                  instructions=s.get("instructions", ""), quantity=s.get("quantity", 5))
+            gen = await _agent_generate(s["agent_key"], {"user_id": s["user_id"]}, client, req)
+            await db.agent_proposals.insert_one({
+                "id": f"prop_{uuid.uuid4().hex[:12]}", "user_id": s["user_id"], "agent_key": s["agent_key"],
+                "agent_label": AGENTS[s["agent_key"]]["label"], "client_id": s["client_id"], "client_name": client["name"],
+                "model": s.get("model", "claude-sonnet-4-6"), "status": "pendente", "title": gen["title"],
+                "summary": gen["summary"], "preview": gen["preview"], "payload": gen["payload"], "result": None,
+                "scheduled": True, "created_at": datetime.now(timezone.utc).isoformat(), "decided_at": None,
+            })
+            await log_activity(s["user_id"], "agente", f"Agente agendado {AGENTS[s['agent_key']]['label']} gerou proposta para {client['name']}")
+        except Exception as e:
+            logger.error(f"Falha ao rodar agendamento {s.get('id')}: {e}")
+
+@api_router.post("/cron/agents-run")
+async def cron_agents_run(request: Request, authorization: Optional[str] = Header(None)):
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    token = (authorization or "").split("Bearer ", 1)[-1].strip()
+    secret = os.environ.get("WEBHOOK_CRON_SECRET")
+    if not secret or not hmac.compare_digest(token, secret):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    asyncio.create_task(_run_due_schedules())
+    return {"ok": True}
 
 @api_router.get("/integrations/nekt/status")
 async def nekt_status(admin: dict = Depends(get_admin_user)):

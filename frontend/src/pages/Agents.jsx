@@ -6,11 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Bot, Share2, Magnet, Target, Mail, Loader2, Check, X, Trash2, Play, Clock, CheckCircle2 } from "lucide-react";
+import { Bot, Share2, Magnet, Target, Mail, Loader2, Check, X, Trash2, Play, Clock, CheckCircle2, TrendingUp, Plus, Power, CalendarClock, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 
-const ICONS = { social: Share2, inbound: Magnet, midia_paga: Target, account: Mail };
+const ICONS = { social: Share2, inbound: Magnet, midia_paga: Target, account: Mail, otimizacao: TrendingUp };
+const WEEKDAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 const MODELS = [
   { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
   { id: "gpt-5.4-mini", label: "GPT-5.4 Mini" },
@@ -30,12 +31,20 @@ export default function Agents() {
   const [form, setForm] = useState({ client_id: "", model: "claude-sonnet-4-6", instructions: "", quantity: 5 });
   const [running, setRunning] = useState(false);
   const [busyId, setBusyId] = useState(null);
+  const [selected, setSelected] = useState([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [schedules, setSchedules] = useState([]);
+  const [schedOpen, setSchedOpen] = useState(false);
+  const [sched, setSched] = useState({ agent_key: "social", client_id: "", model: "claude-sonnet-4-6", instructions: "", quantity: 5, frequency: "weekly", weekday: 1, hour: 9 });
+
+  const loadScheds = () => api.get("/agents/schedules").then(({ data }) => setSchedules(data)).catch(() => {});
 
   const loadProps = () => api.get("/agents/proposals").then(({ data }) => setProposals(data)).catch(() => {});
   useEffect(() => {
     api.get("/agents").then(({ data }) => setAgents(data)).catch(() => {});
     api.get("/clients").then(({ data }) => setClients(data)).catch(() => {});
     loadProps();
+    loadScheds();
   }, []);
 
   const openRun = (agent) => {
@@ -89,6 +98,42 @@ export default function Agents() {
     } catch (err) { toast.error(formatApiError(err)); }
   };
 
+  const toggleSel = (id) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  const bulkApprove = async () => {
+    setBulkBusy(true);
+    try {
+      const { data } = await api.post("/agents/proposals/bulk", { ids: selected, action: "approve" });
+      toast.success(`${data.approved} aprovada(s)${data.errors ? `, ${data.errors} falha(s)` : ""}`);
+      setSelected([]); loadProps();
+    } catch (err) { toast.error(formatApiError(err)); } finally { setBulkBusy(false); }
+  };
+  const bulkReject = async () => {
+    setBulkBusy(true);
+    try {
+      const { data } = await api.post("/agents/proposals/bulk", { ids: selected, action: "reject" });
+      toast.success(`${data.rejected} rejeitada(s)`);
+      setSelected([]); loadProps();
+    } catch (err) { toast.error(formatApiError(err)); } finally { setBulkBusy(false); }
+  };
+
+  const createSched = async () => {
+    if (!sched.client_id) { toast.error("Selecione um cliente"); return; }
+    try { await api.post("/agents/schedules", sched); toast.success("Agendamento criado"); setSchedOpen(false); loadScheds(); }
+    catch (err) { toast.error(formatApiError(err)); }
+  };
+  const toggleSched = async (s) => {
+    try { await api.patch(`/agents/schedules/${s.id}`, { active: !s.active }); loadScheds(); }
+    catch (err) { toast.error(formatApiError(err)); }
+  };
+  const delSched = async (id) => {
+    try { await api.delete(`/agents/schedules/${id}`); loadScheds(); }
+    catch (err) { toast.error(formatApiError(err)); }
+  };
+
+  const pending = proposals.filter((p) => p.status === "pendente");
+  const allPendingSelected = pending.length > 0 && selected.length >= pending.length;
+  const toggleSelectAll = () => setSelected(allPendingSelected ? [] : pending.map((p) => p.id));
+
   const filtered = filter === "all" ? proposals : proposals.filter((p) => p.status === filter);
 
   return (
@@ -129,6 +174,25 @@ export default function Agents() {
         </div>
       </div>
 
+      {pending.length > 0 && (
+        <div className="flex items-center gap-3 flex-wrap glass-card p-3" data-testid="bulk-bar">
+          <button onClick={toggleSelectAll} className="text-xs text-slate-300 flex items-center gap-1.5 hover:text-white" data-testid="bulk-select-all">
+            <CheckSquare className="w-4 h-4" /> {allPendingSelected ? "Limpar seleção" : "Selecionar pendentes"}
+          </button>
+          <span className="text-xs text-slate-500">{selected.length} selecionada(s)</span>
+          {selected.length > 0 && (
+            <div className="flex gap-2 ml-auto">
+              <Button size="sm" onClick={bulkApprove} disabled={bulkBusy} className="bg-emerald-600 hover:bg-emerald-500 text-white" data-testid="bulk-approve">
+                {bulkBusy ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1" />} Aprovar selecionadas
+              </Button>
+              <Button size="sm" variant="outline" onClick={bulkReject} disabled={bulkBusy} className="border-slate-700 bg-white/5 hover:bg-white/10 text-slate-300" data-testid="bulk-reject">
+                <X className="w-3.5 h-3.5 mr-1" /> Rejeitar
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {filtered.length === 0 ? (
         <div className="glass-card p-12 text-center text-slate-500 text-sm" data-testid="proposals-empty">
           Nenhuma proposta {filter !== "all" ? filter : "ainda"}. Rode um agente acima para começar.
@@ -138,6 +202,10 @@ export default function Agents() {
           {filtered.map((p) => (
             <div key={p.id} className="glass-card p-5" data-testid={`proposal-${p.id}`}>
               <div className="flex items-start gap-4">
+                {p.status === "pendente" && (
+                  <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggleSel(p.id)}
+                    className="mt-1.5 w-4 h-4 accent-red-500 shrink-0" data-testid={`proposal-select-${p.id}`} />
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <h3 className="font-display font-semibold">{p.title}</h3>
@@ -173,6 +241,29 @@ export default function Agents() {
                   )}
                 </div>
               </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between flex-wrap gap-3 pt-2">
+        <h2 className="font-display font-bold text-xl flex items-center gap-2"><CalendarClock className="w-5 h-5 text-red-400" /> Agendamentos</h2>
+        <Button size="sm" onClick={() => { setSched({ agent_key: "social", client_id: clients[0]?.id || "", model: "claude-sonnet-4-6", instructions: "", quantity: 5, frequency: "weekly", weekday: 1, hour: 9 }); setSchedOpen(true); }} className="bg-red-600 hover:bg-red-500 text-white rounded-full" data-testid="schedule-new">
+          <Plus className="w-3.5 h-3.5 mr-1.5" /> Novo agendamento
+        </Button>
+      </div>
+      {schedules.length === 0 ? (
+        <div className="glass-card p-6 text-center text-slate-500 text-sm" data-testid="schedules-empty">Nenhum agendamento. Programe um agente para rodar sozinho e cair na fila de aprovação.</div>
+      ) : (
+        <div className="grid sm:grid-cols-2 gap-3" data-testid="schedules-list">
+          {schedules.map((s) => (
+            <div key={s.id} className="glass-card p-4 flex items-center gap-3" data-testid={`schedule-${s.id}`}>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm truncate">{s.agent_label} · {s.client_name}</p>
+                <p className="text-xs text-slate-500">{s.frequency === "daily" ? "Diário" : `Semanal (${WEEKDAYS[s.weekday]})`} às {String(s.hour).padStart(2, "0")}:00 UTC · {s.model}{s.active ? "" : " · pausado"}</p>
+              </div>
+              <button onClick={() => toggleSched(s)} title={s.active ? "Pausar" : "Ativar"} aria-label={s.active ? "Pausar" : "Ativar"} className={`p-2 rounded-lg hover:bg-white/5 ${s.active ? "text-emerald-400" : "text-slate-500"}`} data-testid={`schedule-toggle-${s.id}`}><Power className="w-4 h-4" /></button>
+              <button onClick={() => delSched(s.id)} title="Remover agendamento" aria-label="Remover agendamento" className="p-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10" data-testid={`schedule-delete-${s.id}`}><Trash2 className="w-4 h-4" /></button>
             </div>
           ))}
         </div>
@@ -216,6 +307,82 @@ export default function Agents() {
             </div>
             <Button onClick={run} disabled={running} className="w-full bg-red-600 hover:bg-red-500 text-white" data-testid="agent-run-submit">
               {running ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Gerando proposta...</> : <><Play className="w-4 h-4 mr-2" /> Gerar proposta</>}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={schedOpen} onOpenChange={setSchedOpen}>
+        <DialogContent className="bg-[#15151A] border-slate-800 text-slate-100" data-testid="schedule-dialog">
+          <DialogHeader><DialogTitle className="font-display">Novo agendamento</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-slate-300">Agente</Label>
+                <Select value={sched.agent_key} onValueChange={(v) => setSched({ ...sched, agent_key: v })}>
+                  <SelectTrigger className="bg-[#0E0E11] border-slate-700" data-testid="schedule-agent"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200">
+                    {agents.map((a) => (<SelectItem key={a.key} value={a.key}>{a.label}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Cliente</Label>
+                <Select value={sched.client_id} onValueChange={(v) => setSched({ ...sched, client_id: v })}>
+                  <SelectTrigger className="bg-[#0E0E11] border-slate-700" data-testid="schedule-client"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200 max-h-64">
+                    {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Modelo</Label>
+                <Select value={sched.model} onValueChange={(v) => setSched({ ...sched, model: v })}>
+                  <SelectTrigger className="bg-[#0E0E11] border-slate-700" data-testid="schedule-model"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200">
+                    {MODELS.map((m) => (<SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Frequência</Label>
+                <Select value={sched.frequency} onValueChange={(v) => setSched({ ...sched, frequency: v })}>
+                  <SelectTrigger className="bg-[#0E0E11] border-slate-700" data-testid="schedule-frequency"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200">
+                    <SelectItem value="daily">Diário</SelectItem>
+                    <SelectItem value="weekly">Semanal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {sched.frequency === "weekly" && (
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Dia da semana</Label>
+                  <Select value={String(sched.weekday)} onValueChange={(v) => setSched({ ...sched, weekday: parseInt(v) })}>
+                    <SelectTrigger className="bg-[#0E0E11] border-slate-700" data-testid="schedule-weekday"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-[#15151A] border-slate-800 text-slate-200">
+                      {WEEKDAYS.map((d, i) => (<SelectItem key={i} value={String(i)}>{d}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label className="text-slate-300">Hora (UTC)</Label>
+                <Input type="number" min="0" max="23" value={sched.hour} onChange={(e) => setSched({ ...sched, hour: parseInt(e.target.value) || 0 })} className="bg-[#0E0E11] border-slate-700" data-testid="schedule-hour" />
+              </div>
+              {(sched.agent_key === "social" || sched.agent_key === "inbound") && (
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Quantidade</Label>
+                  <Input type="number" min="1" max="10" value={sched.quantity} onChange={(e) => setSched({ ...sched, quantity: parseInt(e.target.value) || 1 })} className="bg-[#0E0E11] border-slate-700" data-testid="schedule-quantity" />
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label className="text-slate-300">Instruções (opcional)</Label>
+              <Textarea value={sched.instructions} onChange={(e) => setSched({ ...sched, instructions: e.target.value })} className="bg-[#0E0E11] border-slate-700 min-h-20" data-testid="schedule-instructions" />
+            </div>
+            <p className="text-xs text-slate-500">O agente roda no horário definido e a proposta cai na fila para você aprovar. Horário em UTC.</p>
+            <Button onClick={createSched} className="w-full bg-red-600 hover:bg-red-500 text-white" data-testid="schedule-submit">
+              <CalendarClock className="w-4 h-4 mr-2" /> Criar agendamento
             </Button>
           </div>
         </DialogContent>

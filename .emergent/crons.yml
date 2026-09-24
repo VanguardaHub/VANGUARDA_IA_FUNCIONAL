@@ -1,0 +1,8 @@
+crons:
+  - name: agents-scheduler
+    description: "Roda agentes agendados a cada hora e cria propostas pendentes para aprovacao humana"
+    cron: "0 * * * *"
+    endpoint: "{{BASE_URL}}/api/cron/agents-run"
+    method: POST
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    enabled: true

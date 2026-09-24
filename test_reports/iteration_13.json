@@ -1,0 +1,27 @@
+{
+  "summary": "Frontend-only testing of 3 new features on /agentes page: (1) 5th agent Otimização de Performance, (2) Bulk approve/reject, (3) Scheduling. All flows PASSED end-to-end via Playwright with real login (cookie-based auth). Used gpt-5.4-mini only per economy constraint.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Agents dialogs (agent-run-dialog, schedule-dialog)", "issues": ["Radix DialogContent missing Description / aria-describedby (a11y console warning). Non-blocking."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "(Optional a11y polish) Add DialogDescription or aria-describedby to agent-run-dialog and schedule-dialog to silence Radix warning."
+  ],
+  "critical_code_review_comments": [
+    "Agents.jsx uses correct data-testid coverage for all new features (agent-card-otimizacao, agent-run-otimizacao, bulk-bar/select-all/approve/reject, proposal-select-<id>, schedule-* fields, schedule-<id>, schedule-toggle-<id>, schedule-delete-<id>).",
+    "Schedule delete uses confirm() dialog and works. Toggle switches pause/active state correctly (icon color changes)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "test_credentials": "Admin jussaracavalcante25@gmail.com / Vanguarda@2026 (from review_request)",
+  "seed_data_creation": "Created 1 otimizacao proposal (approved, executou em 4 campanhas ÓTICAS IDEALIZE), 2 social proposals (bulk approved), 1 social proposal (bulk rejected), 1 schedule (Social/Semanal/Segunda 09:00 UTC - created, toggled, deleted).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All 3 features verified live on preview URL. Flow: login (cookie) -> /agentes -> 5 cards visible incl otimizacao. Otimização run: opens dialog, client select (ÓTICAS IDEALIZE), model GPT-5.4 Mini, submit -> ~15-30s -> pending proposal -> approve -> status=aprovado, result 'Executado'. Bulk: run Social 2x qty=1 -> 4 checkboxes selected via bulk-select-all -> bulk-approve toast 'Agendamento/aprovadas'. Bulk-reject: single checkbox -> bulk-reject -> rejected. Schedule id format is sch_<12-hex-chars>, use looser regex when detecting. Toggle/delete both functional.",
+  "rca of the issue": "N/A - no bugs found. Prior iteration failure 'schedule created items=[]' in first Playwright run was a false negative due to too-strict regex /^schedule-[a-f0-9-]{8,}$/ that didn't match sch_XXXX format. Verified in follow-up test that schedule cards do render with data-testid=schedule-sch_XXXX."
+}

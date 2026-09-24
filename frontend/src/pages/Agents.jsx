@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Bot, Share2, Magnet, Target, Mail, Loader2, Check, X, Trash2, Play, Clock, CheckCircle2, TrendingUp, Plus, Power, CalendarClock, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
@@ -271,7 +271,9 @@ export default function Agents() {
 
       <Dialog open={!!active} onOpenChange={(o) => { if (!o) setActive(null); }}>
         <DialogContent className="bg-[#15151A] border-slate-800 text-slate-100" data-testid="agent-run-dialog">
-          <DialogHeader><DialogTitle className="font-display">{active?.label}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display">{active?.label}</DialogTitle>
+            <DialogDescription className="text-slate-400">Gere uma proposta para revisão — nada é executado sem sua aprovação.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label className="text-slate-300">Cliente *</Label>
@@ -314,7 +316,9 @@ export default function Agents() {
 
       <Dialog open={schedOpen} onOpenChange={setSchedOpen}>
         <DialogContent className="bg-[#15151A] border-slate-800 text-slate-100" data-testid="schedule-dialog">
-          <DialogHeader><DialogTitle className="font-display">Novo agendamento</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display">Novo agendamento</DialogTitle>
+            <DialogDescription className="text-slate-400">O agente roda no horário definido e a proposta cai na fila para você aprovar.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

@@ -1818,6 +1818,15 @@ async def _apply_proposal(p, user):
                 f'<p>{safe}</p>'
                 f'<p style="font-size:12px;color:#888">Enviado por {escape(EMAIL_FROM_NAME)}. Nunca pedimos senha ou dados de cartão por e-mail.</p>'
                 f'</td></tr></table>')
+        if not EMAIL_KEY or EMAIL_KEY.startswith("{"):
+            logger.error("Envio de e-mail não configurado (EMERGENT_EMAIL_KEY)")
+            raise HTTPException(status_code=503, detail="Envio de e-mail não configurado. O relatório não foi enviado.")
+        try:
+            email_id = await send_email(to=to, subject=subject, html=html)
+        except ValueError as e:
+            logger.warning(f"Relatório bloqueado pelas regras de segurança de e-mail: {e}")
+            raise HTTPException(status_code=400, detail="O relatório foi bloqueado pelas regras de segurança de e-mail. Edite o texto e tente novamente.")
+        return {"email_id": email_id, "to": to}
     if key == "otimizacao":
         applied = 0
         for a in payload.get("actions", []):

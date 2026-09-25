@@ -1493,7 +1493,8 @@ async def _agent_generate(agent_key, user, client, req: AgentRunRequest):
     if agent_key == "social":
         system = ("Você é Head de Social Media de uma agência brasileira premium. Domina tendências ATUAIS (Reels curtos, storytelling, UGC, "
                   "social commerce, carrosséis salváveis, IA generativa) e traduz isso em resultado. Entrega planos acionáveis com cronograma, "
-                  "prazos de produção, custos e briefing de arte. Responda SOMENTE com JSON válido, sem texto fora do JSON.")
+                  "prazos de produção, custos, briefing de arte, ROTEIRO de reels/stories/carrossel, pilares de conteúdo e melhor horário de publicação. "
+                  "Responda SOMENTE com JSON válido, sem texto fora do JSON.")
         prompt = (base_ctx + instr + f"Data de hoje: {hoje}. Monte um PLANO de social media com {q} publicações em pt-BR, distribuídas em DATAS REAIS a partir de hoje, "
                   "aplicando tendências atuais de mercado ao segmento do cliente. Cada item deve ter copy pronta para publicar e um briefing de arte detalhado. "
                   'Retorne JSON: {"estrategia":"resumo estratégico em 2-3 frases citando as tendências aplicadas","periodo":"ex: 10 a 24/06",'
@@ -1501,6 +1502,7 @@ async def _agent_generate(agent_key, user, client, req: AgentRunRequest):
                   '"pilar":"Autoridade|Conexão|Conversão|Educação","tendencia":"tendência de mercado aplicada","titulo":"título curto",'
                   '"legenda":"legenda pronta, persuasiva, em pt-BR, com quebras de linha e emojis quando fizer sentido","hashtags":["#..."],'
                   '"cta":"chamada para ação","brief_arte":"descrição visual detalhada para o designer/IA gerar a arte (cena, estilo, cores, texto na peça)",'
+                  '"roteiro":"para reel/stories/carrossel: roteiro por cenas/frames com falas, cortes e textos de tela; para post estático deixe string vazia","horario_sugerido":"HH:MM",'
                   '"custo_estimado":80}],"custo_total":0,"kpis":["métricas de sucesso"]}')
         data = _parse_agent_json((await run_agent_llm(uid, req.model, system, prompt, client["id"]))[0])
         posts = data.get("posts", [])[:q]
@@ -1508,9 +1510,11 @@ async def _agent_generate(agent_key, user, client, req: AgentRunRequest):
         lines = [f"Estratégia: {data.get('estrategia', '')}",
                  f"Período: {data.get('periodo', '—')}  |  Custo estimado: R${total:.0f}", ""]
         for p in posts:
-            lines.append(f"- {p.get('data_publicacao', '—')} [{p.get('formato')}] {p.get('titulo')}")
+            lines.append(f"- {p.get('data_publicacao', '—')} {p.get('horario_sugerido', '')} [{p.get('formato')}] {p.get('titulo')}")
             lines.append(f"    Pilar {p.get('pilar', '—')} · Tendência: {p.get('tendencia', '—')} · Prazo arte {p.get('prazo_arte', '—')} · R${_num(p.get('custo_estimado')):.0f}")
             lines.append(f"    Arte: {p.get('brief_arte', '—')}")
+            if p.get('roteiro'):
+                lines.append(f"    Roteiro: {p.get('roteiro')}")
         if data.get("kpis"):
             lines.append("\nKPIs: " + ", ".join(data["kpis"]))
         return {"title": f"Plano social — {client['name']} ({len(posts)} posts)",
@@ -1667,6 +1671,8 @@ async def _apply_proposal(p, user):
                 parts.append(f"CTA: {post.get('cta')}")
             if post.get("brief_arte"):
                 parts.append(f"Brief de arte: {post.get('brief_arte')}")
+            if post.get("roteiro"):
+                parts.append(f"Roteiro: {post.get('roteiro')}")
             meta = []
             if post.get("pilar"):
                 meta.append(f"Pilar: {post.get('pilar')}")
@@ -1677,7 +1683,9 @@ async def _apply_proposal(p, user):
             if meta:
                 parts.append(" · ".join(meta))
             dp = post.get("data_publicacao")
-            scheduled = f"{dp}T12:00:00+00:00" if dp and re.match(r"^\d{4}-\d{2}-\d{2}$", str(dp)) else None
+            hrm = re.match(r"^(\d{1,2}):(\d{2})", str(post.get("horario_sugerido") or ""))
+            tt = f"{int(hrm.group(1)):02d}:{hrm.group(2)}" if hrm else "12:00"
+            scheduled = f"{dp}T{tt}:00-03:00" if dp and re.match(r"^\d{4}-\d{2}-\d{2}$", str(dp)) else None
             await db.pieces.insert_one({
                 "id": f"pc_{uuid.uuid4().hex[:12]}", "user_id": uid, "client_id": p["client_id"],
                 "title": post.get("titulo") or "Post", "piece_type": fmt, "model": p["model"],

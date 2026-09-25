@@ -181,3 +181,8 @@ Multi-tenant por usuário; geração de conteúdo com IA contextualizada por mar
 - Apply enriquecido: social/inbound criam pieces com conteúdo completo (legenda+hashtags+CTA+brief de arte+meta) e scheduled_at = data_publicacao; midia_paga cria campanhas com datas/duração/verba/brief/KPI. Helper _num() para parsing seguro. Preview server-side multi-linha; frontend <pre> max-h-80.
 - Cards (AGENTS desc) atualizados citando cronograma/prazos/custos/arte.
 - Verificado por curl (gpt-5.4-mini): social 3 posts R$240 com 11 campos/post; midia_paga 3 campanhas R$7500, approve criou 3 campanhas. Backend OK.
+
+## 2026-06 — Validação do agente Social vs rotinas reais (anexos)
+- Usuário enviou 5 "Rotinas Profissionais" (Sup e Analistas de Social Media). Extraídas as tarefas: planejamento estratégico, cronograma/calendário, legendas, roteiros de reels/stories, briefing de arte, pilares, aprovação humana, prazos, KPIs.
+- Agente Social reforçado para refletir a rotina: adicionados campos ROTEIRO (por cenas p/ reel/stories/carrossel) e HORARIO_SUGERIDO ao schema/preview; apply inclui roteiro no conteúdo e agenda a peça em scheduled_at = data+horário (fuso Brasília -03:00). Mantém human-in-the-loop + agendamento autônomo.
+- Validado por curl: 13 campos/post, roteiro+horário OK, aprovar criou 3 peças com scheduled_at 2026-09-25T19:30:00-03:00.
